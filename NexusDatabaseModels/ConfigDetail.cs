@@ -1,5 +1,5 @@
-﻿using NexusDatabaseManager.DataManagement;
-using NexusDatabaseManager.Enum;
+﻿using DataManagement;
+using DataManagement.Enum;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;

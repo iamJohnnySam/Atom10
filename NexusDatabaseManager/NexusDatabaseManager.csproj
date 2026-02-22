@@ -7,11 +7,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Dapper" Version="2.1.66" />
-  </ItemGroup>
-
-  <ItemGroup>
+    <ProjectReference Include="..\DataManagement\DataManagement.csproj" />
     <ProjectReference Include="..\Logger\Logger.csproj" />
+    <ProjectReference Include="..\NexusDatabaseModels\NexusDatabaseModels.csproj" />
     <ProjectReference Include="..\Utilities\Utilities.csproj" />
   </ItemGroup>
 

@@ -5,6 +5,6 @@ using System.Text;
 
 namespace NexusDatabaseModels;
 
-public class DeliverableDataAccess(string connectionString) : DataAccess<Deliverable>(connectionString, Deliverable.Metadata)
+public class ProductDataAccess(string connectionString) : DataAccess<Product>(connectionString, Product.Metadata)
 {
 }

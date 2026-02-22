@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace NexusDatabaseManager.Enum;
+namespace DataManagement.Enum;
 
 public enum EDataType
 {

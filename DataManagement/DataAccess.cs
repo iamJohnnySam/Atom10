@@ -1,14 +1,12 @@
-﻿using Logger;
+﻿using System;
 using Dapper;
 using Microsoft.Data.Sqlite;
-using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Text;
-using Utilities;
 
-namespace NexusDatabaseManager.DataManagement;
+namespace DataManagement;
 
 public class DataAccess<T> : INotifyPropertyChanged where T : class
 {

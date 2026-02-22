@@ -7,19 +7,19 @@ using System.Text;
 
 namespace NexusDatabaseModels;
 
-public class Customer
+public class Product
 {
     [Key]
-    public int CustomerId { get; set; }
-    public string CustomerName { get; set; } = "New Customer";
+    public int ProductId { get; set; }
+    public string ProductName { get; set; } = "Untitled Product";
 
     public static TableMetadata Metadata => new(
-        typeof(Customer).Name,
+        typeof(Product).Name,
         new Dictionary<string, EDataType>
         {
-                { nameof(CustomerId), EDataType.Key },
-                { nameof(CustomerName), EDataType.Text }
+            { nameof(ProductId), EDataType.Key },
+            { nameof(ProductName), EDataType.Text }
         },
-        nameof(CustomerName)
+        nameof(ProductName)
     );
 }
