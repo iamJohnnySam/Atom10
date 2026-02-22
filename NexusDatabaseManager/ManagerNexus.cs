@@ -4,17 +4,16 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Text;
+using Utilities;
 
 namespace NexusDatabaseManager;
 
 public class ManagerNexus
 {
-    private readonly string dbFileName = "NexusDB.sqlite";
-    public readonly string dbPath;
-    private readonly string _connectionString;
+    private string _connectionString;
 
-    // DataAccess
-    public ConfigDetailDataAccess ConfigDetailDB { get; }
+	// DataAccess
+	public ConfigDetailDataAccess ConfigDetailDB { get; }
     public ConfigurationDataAccess ConfigurationDB { get; }
     public CustomerDataAccess CustomerDB { get; }
     public DeliverableDataAccess DeliverableDB { get; }
@@ -46,19 +45,10 @@ public class ManagerNexus
 
     public ManagerNexus()
     {
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-        {
-            var homeDir = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-            dbPath = Path.Combine(homeDir, dbFileName);
-        }
-        else
-        {
-            dbPath = dbFileName;
-        }
-        _connectionString = $"Data Source={dbPath};";
+        _connectionString = new SqliteConnectionString("NexusDB").ConnectionString;
 
-        // Employee
-        DesignationDB = new(_connectionString);
+		// Employee
+		DesignationDB = new(_connectionString);
         GradeDB = new(_connectionString);
         EmployeeDB = new(_connectionString);
         LoginDB = new(_connectionString);
