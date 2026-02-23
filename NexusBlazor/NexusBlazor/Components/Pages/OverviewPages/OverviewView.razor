@@ -1,0 +1,210 @@
+﻿@page "/overview"
+@implements IDisposable
+@attribute [Authorize]
+
+@using NexusBlazor.Components.Pages.Trackers
+
+@inject Manager manager
+
+@rendermode InteractiveServer
+
+<PageTitle>nɛxus | Overview</PageTitle>
+
+<div style="padding: 10px 20px 10px 20px;">
+    <div class="row">
+        <div class="col">
+            <h3>Project Overview</h3>
+        </div>
+        <div class="col-2">
+        </div>
+        <div class="col-1"></div>
+    </div>
+    <br />
+    @foreach(Project project in manager.ProjectDB.ActiveTracked)
+    {
+        <div class="row" style="padding-bottom:10px" @onclick="() => ProjectSelected(project)">
+            <div class="col-3"><h4>@project.ProjectName</h4></div>
+            <div class="col-3"><strong>@project.DesignCode | @project.ProjectCode (Owner: 
+                    @if (project.PrimaryDesignerId == 0)
+                    {
+                        <span>Not Assigned</span>
+                    }
+                    else
+                    {
+                        @manager.EmployeeDB.GetByIdAsync(project.PrimaryDesignerId).Result?.EmployeeShortName
+                    }
+                    )</strong></div>
+            <div class="col"></div>
+            <div class="col-1">Week @Week Resources</div>
+        </div>
+
+        <div class="row">
+            <div class="col-6">
+                Milestones
+                <MilestoneCell SelectedProject="project" OnMilestoneEdit="EditMilestone" />
+                @if (SelectedProjectId == project.ProjectId)
+                {
+                    <div class="row">
+                        <div class="col">
+                            <div style="text-align:center; padding-top:10px;">
+                                <InputText @bind-Value="NewMilestoneTitle" />
+                            </div>
+                        </div>
+                        <div class="col-3">
+                            <div style="text-align:center; padding-top:10px;">
+                                <button class="modern-button" @onclick="() => AddMilestone(project)">Add & Edit</button>
+                                <button class="modern-button" @onclick="() => BulkAddMilestone(project)">Bulk Add</button>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+            <div class="col">
+                Action Items
+                <TaskItemsCell SelectedProject="project" OnTaskItemEdit="EditTaskItem" />
+                @if (SelectedProjectId == project.ProjectId)
+                {
+                    <div style="text-align:center; padding-top:10px;">
+                        <InputText @bind-Value="NewTaskTitle" />
+                    </div>  
+                }
+            </div>
+            <div class="col-1">
+                <ManualResourceCell ResourceType="ManualResourceType.Employee" Id="project.ProjectId" Year="DateTime.Now.Year" Week="CalendarLogic.WeekOfYear(DateTime.Now)" />
+            </div>
+        </div>
+        <hr />
+    }
+</div>
+
+@if (ShowMilestoneOverlay)
+{
+    <MilestoneEditOverlay SelectedItem="SelectedMilestone" OnItemUpdate="ItemUpdated" />
+}
+@if (ShowTaskOverlay)
+{
+    <ParentTaskOverlay SelectedItem="SelectedTask" OnItemUpdate="ItemUpdated" />
+}
+@if (ShowMilestoneTemplatesOverlay)
+{
+    <MilestoneAdderOverlay SelectedProjectId="SelectedProjectId" />
+}
+
+@code {
+    private int SelectedProjectId { get; set; } = 0;
+    private Milestone SelectedMilestone { get; set; } = new();
+    private TaskItem SelectedTask { get; set; } = new();
+
+    private bool ShowMilestoneOverlay { get; set; } = false;
+    private bool ShowMilestoneTemplatesOverlay { get; set; } = false;
+    private bool ShowTaskOverlay { get; set; } = false;
+
+    private int Year { get; set; } = DateTime.Today.Year;
+    private int Week { get; set; } = CalendarLogic.WeekOfYear(DateTime.Now);
+
+    public string NewTaskTitle
+    {
+        get { return ""; }
+        set
+        {
+            manager.TaskItemDB.InsertAsync(new TaskItem
+            {
+                Title = value,
+                ProjectId = SelectedProjectId,
+                ParentTaskId = 0,
+                CreatedOn = DateTime.Now,
+                Deadline = DateTime.Now.AddDays(1),
+                IsCompleted = false
+            }).Wait();
+        }
+    }
+
+    public string NewMilestoneTitle
+    {
+        get { return ""; }
+        set
+        {
+            manager.MilestoneDB.InsertAsync(new Milestone
+            {
+                MilestoneName = value,
+                ProjectId = SelectedProjectId,
+                PlannedDate = DateTime.Now.AddDays(7),
+                IsCompleted = false,
+                OnHold = false
+            }).Wait();
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+
+        Year = DateTime.Today.Year;
+        Week = CalendarLogic.WeekOfYear(DateTime.Now);
+        manager.ProjectDB.PropertyChanged += (_, __) => InvokeAsync(StateHasChanged);
+        manager.MilestoneDB.PropertyChanged += (_, __) => InvokeAsync(StateHasChanged);
+        manager.TaskItemDB.PropertyChanged += (_, __) => InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        manager.ProjectDB.PropertyChanged -= (_, __) => InvokeAsync(StateHasChanged);
+        manager.MilestoneDB.PropertyChanged -= (_, __) => InvokeAsync(StateHasChanged);
+        manager.TaskItemDB.PropertyChanged -= (_, __) => InvokeAsync(StateHasChanged);
+    }
+
+    private void EditMilestone(Milestone milestone)
+    {
+        SelectedMilestone = milestone;
+        SelectedProjectId = milestone.ProjectId;
+        ShowMilestoneOverlay = true;
+        ShowMilestoneTemplatesOverlay = false;
+        ShowTaskOverlay = false;
+    }
+
+
+    private void EditTaskItem(TaskItem task)
+    {
+        SelectedTask = task;
+        SelectedProjectId = task.ProjectId;
+        ShowMilestoneOverlay = false;
+        ShowMilestoneTemplatesOverlay = false;
+        ShowTaskOverlay = true;
+    }
+
+    private void ProjectSelected(Project project)
+    {
+        SelectedProjectId = project.ProjectId;
+    }
+
+    private void ItemUpdated()
+    {
+        ShowMilestoneOverlay = false;
+        ShowMilestoneTemplatesOverlay = false;
+        ShowTaskOverlay = false;
+    }
+
+    private void AddMilestone(Project project)
+    {
+        SelectedMilestone = new Milestone
+        {
+            ProjectId = project.ProjectId,
+            MilestoneName = "",
+            PlannedDate = DateTime.Now,
+            IsCompleted = false,
+            Comments = ""
+        };
+        SelectedProjectId = project.ProjectId;
+        ShowMilestoneOverlay = true;
+        ShowMilestoneTemplatesOverlay = false;
+        ShowTaskOverlay = false;
+    }
+
+    private void BulkAddMilestone(Project project)
+    {
+        SelectedProjectId = project.ProjectId;
+        ShowMilestoneOverlay = false;
+        ShowMilestoneTemplatesOverlay = true;
+        ShowTaskOverlay = false;
+    }
+}

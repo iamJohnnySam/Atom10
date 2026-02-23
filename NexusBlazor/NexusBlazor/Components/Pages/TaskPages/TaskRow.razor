@@ -1,0 +1,156 @@
+﻿@using System.ComponentModel.DataAnnotations
+@using System.Globalization
+@inject IJSRuntime JS
+@inject Manager manager
+
+<div class="row align-items-end">
+    <div class="col">
+        @if(InputTask.ParentTaskId != 0)
+        {
+            <div style="display: flex; width: 100%;">
+                <div style="width: 10px;">•</div>
+                <div style="flex: 1;"><InputText class=@ItemClass() style="background-color:rgba(0, 0, 0, 0); color:white; border: none;" @bind-Value="thisTitle" /></div>
+            </div>
+        }
+        else
+        {
+            <InputText class=@ItemClass() style="background-color:rgba(0, 0, 0, 0); color:white; border: none;" @bind-Value="thisTitle" />
+        }
+    </div>
+    <div class="col-1" style="display: flex; justify-content: center; align-items: center;">
+        @if (InputTask.Responsible != null)
+        {
+            <span>@InputTask.Responsible.EmployeeShortName</span>
+        }
+    </div>
+    <div class="col-1">
+        <InputDate class="form-control" style="background-color:rgba(0, 0, 0, 0); color:white; border: none;" @bind-Value="thisDeadline" />
+    </div>
+
+    <div class="col-2">
+        @if (IsTaskEdited)
+        {
+            <button class="btn btn-primary w-100" @onclick="TriggerUpdate">✅ Update</button>
+        }
+        else
+        {
+            if (subTasksComplete)
+            {
+                <button class="modern-button" style="width:110px; margin: 2px 5px" @onclick="ToggleComplete">
+                    <nobr>@(InputTask.IsCompleted ? "Not Done" : "✅ Done")</nobr>
+                </button>
+            }
+            else
+            {
+                <button style ="width:110px; margin: 2px 5px; background: none; border: none; color: white;">Pending Sub Tasks</button>
+            }
+        }
+        <button class="modern-button " style="width:80px; margin: 2px 5px" @onclick=onTaskSelected>
+            Edit Task
+        </button>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public TaskItem InputTask { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback OnTaskUpdated { get; set; }
+
+    [Parameter]
+    public EventCallback<TaskItem> OnTaskSelected { get; set; }
+
+    [Parameter]
+    public List<Employee> AllEmployees { get; set; } = new();
+
+
+    bool subTasksComplete = false;
+
+    private string title = string.Empty;
+
+    public string thisTitle
+    {
+        get { return title; }
+        set { 
+            title = value;
+            IsTaskEdited = true;
+            _ = TriggerUpdate();
+        }
+    }
+
+    private DateTime deadline;
+
+    public DateTime thisDeadline
+    {
+        get { return deadline; }
+        set
+        {
+            deadline = value;
+            IsTaskEdited = true;
+            _ = TriggerUpdate();
+        }
+    }
+
+    async void onTaskSelected()
+    {
+        await OnTaskSelected.InvokeAsync(InputTask);
+    }
+
+
+    private bool IsTaskEdited { get; set; } = false;
+    private bool ShowDescription { get; set; } = false;
+
+    protected override void OnParametersSet()
+    {
+        title = InputTask.Title;
+        deadline = InputTask.Deadline;
+    }
+
+    private async Task TriggerUpdate()
+    {
+        await manager.TaskItemDB.UpdateAsync(GetTask());
+        await OnTaskUpdated.InvokeAsync();
+        IsTaskEdited = false;
+    }
+
+    private TaskItem GetTask()
+    {
+        return new TaskItem
+        {
+            TaskId = InputTask.TaskId,
+            ProjectId = InputTask.ProjectId,
+            Title = thisTitle,
+            Description = InputTask.Description,
+            CreatedOn = InputTask.CreatedOn,
+            StartedOn = InputTask.StartedOn,
+            Deadline = thisDeadline,
+            IsCompleted = InputTask.IsCompleted,
+            ParentTaskId = InputTask.ParentTaskId,
+            Responsible = InputTask.Responsible
+        };
+    }
+
+
+    private async Task ToggleComplete()
+    {
+        TaskItem EditableTask = GetTask();
+
+        if(EditableTask.IsCompleted == false)
+        {
+            var confirm = await JS.InvokeAsync<bool>("confirm", "Are you sure you want to mark this task as completed?");
+            if (!confirm) return;
+        }
+
+        EditableTask.IsCompleted = !EditableTask.IsCompleted;
+        await manager.TaskItemDB.UpdateAsync(EditableTask);
+        await OnTaskUpdated.InvokeAsync();
+        IsTaskEdited = false;
+        ShowDescription = false;
+    }
+
+    private string ItemClass()
+    {
+        return InputTask.IsCompleted ? "form-control item-completed" : "form-control";
+    }
+}

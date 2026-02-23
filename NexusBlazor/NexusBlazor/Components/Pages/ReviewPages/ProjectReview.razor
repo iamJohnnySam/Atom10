@@ -1,0 +1,70 @@
+﻿@page "/review"
+@attribute [Authorize]
+@inject Manager manager
+@inject LoginInformation LoginInfo
+@rendermode InteractiveServer
+
+<PageTitle>nexus | Review | @LoginInfo.CurrentProject</PageTitle>
+<ProjectSelectionRowComponent Title="Project Review" OnProjectChange="HandleProjectChange" />
+
+<div style="padding: 10px 20px 10px 30px;">
+    <table width="100%" class="modern-table">
+        <thead>
+            <tr>
+                <th>Module</th>
+                <th>Count</th>
+                <th colspan="3">Specification</th>
+                <th colspan="3">Review</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (Configuration configuration in Configurations)
+            {
+                <ReviewRow ThisConfiguration="configuration" ProjectId="LoginInfo.CurrentProject.ProjectId" OnItemSelected="ItemSelected" />
+            }
+        </tbody>
+    </table>
+</div>
+
+<ReviewCommentOverlay SelectedReviewItem="SelectedReviewItem" ShowOverlay="ShowOverlay" OnItemUpdate="StateHasChanged" />
+
+
+
+@code
+{
+    private List<Configuration> Configurations { get; set; } = [];
+
+    public bool ShowOverlay { get; set; } = false;
+    public ReviewItem SelectedReviewItem { get; set; } = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+        await base.OnInitializedAsync();
+        LoginInfo.PropertyChanged += (_, __) => InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        LoginInfo.PropertyChanged -= (_, __) => InvokeAsync(StateHasChanged);
+    }
+
+    private async Task LoadData()
+    {
+        Configurations = await manager.ConfigurationDB.GetByProjectIdAsync(LoginInfo.CurrentProject.ProjectId);
+        StateHasChanged();
+    }
+
+    private async Task HandleProjectChange(string projectName)
+    {
+        Project project = await manager.ProjectDB.SelectProjectFromName(projectName);
+        LoginInfo.CurrentProject = project;
+        await LoadData();
+    }
+
+    void ItemSelected(ReviewItem item)
+    {
+        ShowOverlay = true;
+        SelectedReviewItem = item;
+    }
+}

@@ -1,0 +1,72 @@
+﻿@implements IDisposable
+@inject Manager manager
+
+<div style="padding: 10px 20px 10px 20px;">
+    <table style="width: 100%; ">
+        <tr style="border-bottom: 1px solid red;">
+            <th>Project</th>
+            <th>Project Code</th>
+            @for (int i = CurrentWeek; i < CurrentWeek + NumberOfWeeks; i++)
+            {
+                int thisYear = DateTime.Now.Year;
+                int thisWeek = 1;
+                <th style=@cellStyle>
+                    @if (i > 52)
+                    {
+                        thisYear = DateTime.Now.Year + 1;
+                        thisWeek = i % 52;
+                    }
+                    else
+                    {
+                        thisYear = DateTime.Now.Year;
+                        thisWeek = i;
+                    }
+                    Week @(thisWeek) (@CalendarLogic.GetFirstMondayOfWeek(DateTime.Today.Year, thisWeek).ToString("MM/dd"))
+                </th>
+            }
+        </tr>
+
+
+        @foreach (Project project in manager.ProjectDB.ActiveTracked)
+        {
+            <tr>
+                <td>@project.ProjectName</td>
+                <td>@project.DesignCode</td>
+
+                @for (int i = CurrentWeek; i < CurrentWeek + NumberOfWeeks; i++)
+                {
+                    int Year = DateTime.Today.Year;
+                    <td>
+                        <ReportProjectBlocks ProjectId="project.ProjectId" Week="i" Year="Year" />
+                    </td>
+                }
+            </tr>
+        }
+
+    </table>
+</div>
+
+
+@code {
+    private int CurrentWeek { get; set; }
+    private int NumberOfWeeks { get; set; } = 12;
+    private ManualResourceType ResourceType = ManualResourceType.Employee;
+
+    protected override void OnInitialized()
+    {
+        CurrentWeek = CalendarLogic.WeekOfYear(DateTime.Now);
+        base.OnInitialized();
+        cellWidth = (95 * 16) / NumberOfWeeks;
+        cellStyle = $"width: {cellWidth}px; ";
+
+        manager.ProjectDB.PropertyChanged += (_, __) => InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        manager.ProjectDB.PropertyChanged -= (_, __) => InvokeAsync(StateHasChanged);
+    }
+
+    int cellWidth = 85;
+    string cellStyle = "width: 85px;";
+}

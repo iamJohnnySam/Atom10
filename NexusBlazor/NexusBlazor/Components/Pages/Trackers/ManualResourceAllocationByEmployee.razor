@@ -1,0 +1,99 @@
+﻿@page "/manual_resource_allocation_by_employee"
+@attribute [Authorize]
+@inject Manager manager
+@rendermode InteractiveServer
+
+<PageTitle>nexus | Resource Allocation (Manual)</PageTitle>
+
+<div style="padding: 10px 20px 10px 20px;">
+    <h1>Resource Allocations</h1>
+
+    <table style="width: 100%; ">
+        <tr style="border-bottom: 1px solid red;">
+            <th>Employee</th>
+            <th>Designation</th>
+            @for (int i = CurrentWeek; i < CurrentWeek + NumberOfWeeks; i++)
+            {
+                int thisYear = DateTime.Now.Year;
+                int thisWeek = 1;
+                <th style=@cellStyle>
+                    @if (i > 52)
+                    {
+                        thisYear = DateTime.Now.Year + 1;
+                        thisWeek = i % 52;
+                    }
+                    else
+                    {
+                        thisYear = DateTime.Now.Year;
+                        thisWeek = i;
+                    }
+                    Week @(thisWeek) (@CalendarLogic.GetFirstMondayOfWeek(DateTime.Today.Year, thisWeek).ToString("MM/dd"))
+                </th>
+            }
+        </tr>
+
+
+        @foreach (Employee employee in manager.EmployeeDB.AllActive)
+        {
+            <tr>
+                <td>@employee.EmployeeShortName</td>
+                <td>@employee.Designation?.DesignationName</td>
+                @for (int i = CurrentWeek; i < CurrentWeek + NumberOfWeeks; i++)
+                {
+                    int Year = DateTime.Today.Year;
+                    if (i > 52)
+                    {
+                        Year += 1;
+                    }
+                    int Week = i % 52;
+                    if (Week == 0)
+                    {
+                        Week = 52;
+                    }
+                    <td>
+                        @if (employee.JoinDate <= CalendarLogic.GetFirstMondayOfWeek(Year, Week) && (employee.LeaveDate == null || employee.LeaveDate >= CalendarLogic.GetFirstMondayOfWeek(Year, Week)))
+                        {
+                            <ManualResourceCell ResourceType=ManualResourceType.Project Id="employee.EmployeeId" Week="Week" Year="Year" Projects="manager.ProjectDB.AllItems" />
+                        }
+                        else
+                        {
+                            <span>N/A</span>
+                        }
+                    </td>
+                }
+            </tr>
+        }
+
+
+
+    </table>
+</div>
+
+
+@code {
+    private int CurrentWeek { get; set; }
+    private int NumberOfWeeks { get; set; } = 12;
+
+    protected override void OnInitialized()
+    {
+        CurrentWeek = CalendarLogic.WeekOfYear(DateTime.Now);
+        base.OnInitialized();
+        manager.EmployeeDB.PropertyChanged += (_, __) => InvokeAsync(StateHasChanged);
+        manager.ProjectDB.PropertyChanged += (_, __) => InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        manager.EmployeeDB.PropertyChanged -= (_, __) => InvokeAsync(StateHasChanged);
+        manager.ProjectDB.PropertyChanged -= (_, __) => InvokeAsync(StateHasChanged);
+    }
+
+    int cellWidth = 85;
+    string cellStyle = "width: 85px;";
+
+    protected override void OnParametersSet()
+    {
+        cellWidth = (95 * 16) / NumberOfWeeks;
+        cellStyle = $"width: {cellWidth}px; ";
+    }
+}

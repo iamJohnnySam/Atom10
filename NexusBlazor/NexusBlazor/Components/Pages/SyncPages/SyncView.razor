@@ -1,0 +1,33 @@
+﻿@page "/sync"
+@attribute [Authorize(Roles = "Admin")]
+@inject Manager manager
+@rendermode InteractiveServer
+
+
+<div style="padding: 10px 10px 100px 30px; text-align:center">
+    <h3>Database Synchronization with GDrive</h3>
+    <br />
+    <button class="modern-button" @onclick="UploadDatabase">Upload via account</button>
+    <button class="modern-button" @onclick="UploadDatabaseViaService">Upload via service</button>
+    <br /><br />
+    <span style="padding: 10px; font-weight:400">@Status</span>
+
+</div>
+
+
+@code {
+    public string Status { get; set; } = "Waiting for Status";
+    private async Task UploadDatabase()
+    {
+        Status = "Uploading via OAuth...";
+        await new GoogleDriveSync().UploadDatabaseToDriveAsync_OAuth(manager.SqliteConnection.DbPath);
+        Status = "Upload Completed";
+    }
+
+    private async Task UploadDatabaseViaService()
+    {
+        Status = "Uploading via Service...";
+        await GoogleDriveSync.UploadDatabaseToDriveAsync(manager.SqliteConnection.DbPath);
+        Status = "Upload Completed";
+    }
+}

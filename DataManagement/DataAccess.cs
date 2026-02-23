@@ -16,12 +16,14 @@ public class DataAccess<T> : INotifyPropertyChanged where T : class
     SqliteLogger logger = new SqliteLogger();
 
     private List<T> allItemsCache = [];
+    private bool AllItemsInitialLoad = false;
     public List<T> AllItems
     {
         get
         {
-            if (allItemsCache.Count == 0)
+            if (allItemsCache.Count == 0 && !AllItemsInitialLoad)
             {
+                AllItemsInitialLoad = true;
                 logger.Info("AllItems accessed but is currently empty.");
                 Task.Run(async () => await GetAllAsync()).Wait();
             }

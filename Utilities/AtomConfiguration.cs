@@ -5,13 +5,13 @@ using System.Text;
 
 namespace Utilities;
 
-public class Configuration
+public class AtomConfiguration
 {
 	readonly IConfiguration config;
 
 	public string HostName { get; set; } = System.Net.Dns.GetHostName().ToLower();
 
-	public Configuration(Type userSecretsType)
+	public AtomConfiguration(Type userSecretsType)
 	{
 		var builder = new ConfigurationBuilder()
 			.SetBasePath(AppContext.BaseDirectory)

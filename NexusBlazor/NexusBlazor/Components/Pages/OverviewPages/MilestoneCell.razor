@@ -1,0 +1,128 @@
+﻿@inject Manager manager
+@inject LoginInformation LoginInfo
+@inject AuthenticationStateProvider auth
+@rendermode InteractiveServer
+
+<div style="padding: 5px 5px;">
+    <table style="width:100%">
+        @foreach (Milestone milestone in link!.IncompleteItems)
+        {
+            <tr>
+                <td @onclick="() => EditMilestone(milestone)">@milestone.MilestoneName
+                    @if (milestone.Comments != string.Empty)
+                    {
+                        <br />
+                        <span style="color: gray;white-space: pre-wrap;">@milestone.Comments</span>
+                    }
+                </td>
+                <td style="padding-right:10px; width:12%;">@milestone.PlannedDate.ToString("yyyy-MM-dd")</td>
+                <td style="width:12%; padding-right:10px;">
+                    @if (milestone.OnHold)
+                    {
+                        <span style="color: wheat">On Hold</span>
+                    }
+                    else if ((milestone.PlannedDate - DateTime.Today).Days >= 0)
+                    {
+                        <span>@((milestone.PlannedDate - DateTime.Today).Days) Days</span>
+                    }
+                    else
+                    {
+                        <span style="color:palevioletred">@((milestone.PlannedDate - DateTime.Today).Days) Days</span>
+                    }
+                </td>
+                <td style="width:15%">
+                    @if (milestone.ResponsibleId != 0)
+                    {
+                        @if (milestone.ResponsibleId == LoginInfo.CurrentEmployeeId)
+                        {
+                            <span style="color: yellow">@manager.EmployeeDB.GetByIdAsync(milestone.ResponsibleId).Result?.EmployeeShortName</span>
+                        }
+                        else
+                        {
+                            @manager.EmployeeDB.GetByIdAsync(milestone.ResponsibleId).Result?.EmployeeShortName
+                        }
+                    }
+                </td>
+            </tr>
+        }
+    </table>
+    <br />
+    <table style="width:100%">
+        @foreach (Milestone milestone in link!.CompletedItems)
+        {
+            <tr>
+                <td @onclick="() => EditMilestone(milestone)">@milestone.MilestoneName
+                    @if (milestone.Comments != string.Empty)
+                    {
+                        <br />
+                        <span style="color: gray;white-space: pre-wrap;">@milestone.Comments</span>
+                    }
+                </td>
+                <td style="padding-right:10px; width:12%;">@milestone.PlannedDate.ToString("yyyy-MM-dd")</td>
+                <td style="width:12%; padding-right:10px;">@milestone.ActualDate.ToString("yyyy-MM-dd")</td>
+                <td style="width:15%">
+                    @if (milestone.ResponsibleId != 0)
+                    {
+                        @manager.EmployeeDB.GetByIdAsync(milestone.ResponsibleId).Result?.EmployeeShortName
+                    }
+                </td>
+            </tr>
+            i++;
+            if(!ShowExpanded && !ThisExpanded && i >= 3)
+            {
+                expandButton = true;
+                break;
+            }
+        }
+    </table>
+    @if (expandButton && !ThisExpanded)
+    {
+        <div style="text-align:center; padding-top:10px;">
+            <button class="modern-button" @onclick="() => ThisExpanded = true">Show More</button>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public required Project SelectedProject { get; set; }
+
+    [Parameter]
+    public EventCallback<Milestone> OnMilestoneEdit { get; set; }
+
+    [Parameter]
+    public bool ShowExpanded { get; set; } = false;
+
+    public bool ThisExpanded { get; set; } = false;
+
+    private int i = 0;
+    private bool expandButton = false;
+
+    MilestoneProjectLink? link;
+
+    protected override async Task OnInitializedAsync()
+    {
+        link = await manager.MilestoneDB.GetProjectLink(SelectedProject.ProjectId);
+        link!.PropertyChanged += (_, __) => InvokeAsync(StateHasChanged);
+        manager.MilestoneDB.PropertyChanged += (_, __) => InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        link!.PropertyChanged -= (_, __) => InvokeAsync(StateHasChanged);
+        manager.MilestoneDB.PropertyChanged -= (_, __) => InvokeAsync(StateHasChanged);
+    }
+
+    protected override void OnParametersSet()
+    {
+        i = 0;
+    }
+
+    private async Task EditMilestone(Milestone milestone)
+    {
+        if (OnMilestoneEdit.HasDelegate)
+        {
+            await OnMilestoneEdit.InvokeAsync(milestone);
+        }
+    }
+}

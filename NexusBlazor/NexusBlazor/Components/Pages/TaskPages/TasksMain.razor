@@ -1,0 +1,81 @@
+﻿@page "/tasks"
+@implements IDisposable
+@attribute [Authorize]
+@inject Manager manager
+@inject LoginInformation LoginInfo
+@rendermode InteractiveServer
+
+<PageTitle>nexus | Tasks | @LoginInfo.CurrentProject.ProjectName</PageTitle>
+
+<ProjectSelectionRowComponent Title="Project Task Manager" OnProjectChange="HandleProjectChange" />
+
+
+<div class="fixed-bottom" style="padding: 10px 0px 10px 30px; background-color: #222529;">
+    <hr style="border-top: 1px solid white" />
+    <NewTask ProjectId=LoginInfo.CurrentProject.ProjectId ParentTaskId=0 OnTaskAdded="HandleTaskAdded" AllActiveEmployees="manager.EmployeeDB.AllActive" />
+</div>
+
+
+<div style="padding: 10px 10px 100px 30px;">
+    <TaskList SelectedProject="LoginInfo.CurrentProject" OnTaskSelected="OnTaskSelected" OnTaskUpdated="OnTaskUpdate" SelectedParentTaskId="SelectedParentTaskId" />
+</div>
+
+<TaskEditorOverlay SelectedItem="SelectedTask" OnItemUpdate="OnTaskUpdate" ShowOverlay="showOverlay" />
+
+
+
+@code {
+    private TaskItem? SelectedTask {get;set;} = null;
+    bool showOverlay = false;
+    int SelectedParentTaskId { get; set; } = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        base.OnInitialized();
+        manager.EmployeeDB.PropertyChanged += (_, __) => InvokeAsync(StateHasChanged);
+        LoginInfo.PropertyChanged += (_, __) => InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        manager.EmployeeDB.PropertyChanged -= (_, __) => InvokeAsync(StateHasChanged);
+        LoginInfo.PropertyChanged -= (_, __) => InvokeAsync(StateHasChanged);
+    }
+
+    async void OnTaskDelete()
+    {
+        SelectedTask = null;
+        showOverlay = false;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    async void OnTaskUpdate()
+    {
+        showOverlay = false;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void HandleProjectChange(string projectName)
+    {
+        SelectedParentTaskId = 0;
+        SelectedTask = null;
+        StateHasChanged();
+    }
+
+    async void OnTaskSelected(TaskItem task)
+    {
+        SelectedParentTaskId = task.ParentTaskId ?? 0;
+        SelectedTask = task;
+        showOverlay = true;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async void HandleTaskAdded(TaskItem task)
+    {
+        task.ProjectId = LoginInfo.CurrentProject.ProjectId;
+        await manager.TaskItemDB.InsertAsync(task);
+        SelectedTask = null;
+        await InvokeAsync(StateHasChanged);
+    }
+
+}

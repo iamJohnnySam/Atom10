@@ -1,0 +1,63 @@
+﻿@implements IDisposable
+
+@inject Manager manager
+
+@rendermode InteractiveServer
+
+<div style="padding: 5px 5px;">
+    <table style="width:100%">
+        @foreach (TaskItem parentTask in projectLink!.IncompleteParentTasks)
+        {
+            <TaskItemCellForEachParent ParentTask="parentTask" 
+                ShowExpanded="ShowExpanded" 
+                SelectedParentTaskId="CurrentParentTaskId" 
+                SelectedProjectId="SelectedProject.ProjectId"
+                OnTaskItemSelect="SelectTask"
+                OnTaskItemEdit="EditTask"/>
+        }
+    </table>
+</div>
+
+@code {
+    [Parameter]
+    public required Project SelectedProject { get; set; }
+
+    [Parameter]
+    public EventCallback<TaskItem> OnTaskItemEdit { get; set; }
+
+    [Parameter]
+    public bool ShowExpanded { get; set; } = false;
+
+    TaskItemProjectLink? projectLink;
+
+    private int CurrentParentTaskId { get; set; } = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        projectLink = await manager.TaskItemDB.GetProjectLink(SelectedProject.ProjectId);
+        projectLink.PropertyChanged += (_, __) => InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        projectLink!.PropertyChanged -= (_, __) => InvokeAsync(StateHasChanged);
+        manager.EmployeeDB.PropertyChanged -= (_, __) => InvokeAsync(StateHasChanged);
+    }
+
+    private void EditTask(TaskItem task)
+    {
+        OnTaskItemEdit.InvokeAsync(task);
+    }
+
+    private async Task SelectTask(TaskItem task)
+    {
+        if(CurrentParentTaskId == task.TaskId)
+        {
+            CurrentParentTaskId = 0;
+        }
+        else
+        {
+            CurrentParentTaskId = task.TaskId;
+        }
+    }
+}

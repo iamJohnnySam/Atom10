@@ -1,0 +1,135 @@
+﻿@page "/projects"
+@attribute [Authorize]
+@inject Manager manager
+@inject LoginInformation LoginInfo
+@inject IJSRuntime JS
+@rendermode InteractiveServer
+
+<PageTitle>nexus | @LoginInfo.CurrentProject.ProjectName</PageTitle>
+
+<div class="row" style="padding: 20px 30px 20px 30px;">
+    <div class="col">
+        <h2 class="text-2xl font-semibold mb-4" style="padding-top: 20px; padding-left: 30px">Project Manager</h2>
+    </div>
+    <div class="col-2" style="padding-top: 20px;">
+        <div class="d-flex justify-content-center align-items-center p-4">
+            <button class="btn rounded-pill border border-white text-white px-4 py-2"
+                    style="background-color: transparent;"
+                    @onclick="HandleNewProject">
+                Add Project
+            </button>
+        </div>
+    </div>
+    <div class="col-1">
+
+    </div>
+</div>
+
+<div class="row" style="padding: 20px 30px 20px 30px;">
+    <div class="col-8 scrollable-area">
+        
+        <table class="table table-bordered table-hover">
+            <thead class="table-dark">
+                <tr>
+                    <th>Project Name</th>
+                    <th>Customer</th>
+                    <th>Product</th>
+                    <th>Design Code</th>
+                    <th>Project Code</th>
+                    <th>Part Number</th>
+                    <th>Priority</th>
+                    <th>PO Status</th>
+                    <th>Active</th>
+                    <th>Tracked</th>
+                    <th>Designer</th>
+                    <th>Documents</th>
+                    <th colspan="2">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var project in manager.ProjectDB.AllItems)
+                {
+                    <tr class="@((LoginInfo.CurrentProject.ProjectId == project.ProjectId) ? "table-primary" : "")">
+                        <td style="color: white">@project.ProjectName</td>
+                        <td style="color: white">@project.Customer?.CustomerName</td>
+                        <td style="color: white">@project.Product?.ProductName</td>
+                        <td style="color: white">@project.DesignCode</td>
+                        <td style="color: white">@project.ProjectCode</td>
+                        <td style="color: white">@project.PartNumber</td>
+                        <td style="color: white">@project.Priority.ToString()</td>
+                        <td style="color: white">@project.POStatus.ToString()</td>
+                        <td style="color: white">@(project.IsActive ? "✓" : "✗")</td>
+                        <td style="color: white">@(project.IsTrackedProject ? "✓" : "✗")</td>
+                        <td style="color: white">@project.PrimaryDesigner?.EmployeeShortName</td>
+                        <td style="color: white">
+                            @if (project.RequirementDocumentLink != string.Empty)
+                            {
+                                <a href = "@project.RequirementDocumentLink" > Link </a>
+                            }
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary me-2" @onclick="() => HandleProjectSelection(project)">Select</button>
+                            @if(project.ProjectId != 1)
+                            {
+                                <button class="btn btn-sm btn-outline-danger" @onclick="() => Delete(project)">Delete</button>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    <div class="col">
+        <ProjectEdit SelectedProject="@LoginInfo.CurrentProject" />
+    </div>
+</div>
+
+@code {
+
+    protected override void OnInitialized()
+    {
+        manager.ProjectDB.PropertyChanged += (_, __) => InvokeAsync(StateHasChanged);
+        LoginInfo.PropertyChanged += (_, __) => InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        manager.ProjectDB.PropertyChanged -= (_, __) => InvokeAsync(StateHasChanged);
+        LoginInfo.PropertyChanged -= (_, __) => InvokeAsync(StateHasChanged);
+    }
+
+    private void HandleProjectSelection(Project p)
+    {
+        LoginInfo.CurrentProject = p;
+    }
+
+    private async Task Delete(Project project)
+    {
+        if(project.ProjectId == 1)
+        {
+            return;
+        }
+
+        var confirmed = await JS.InvokeAsync<bool>("confirm", "Are you sure you want to delete this project?");
+        if (!confirmed) return;
+
+        var reconfirmed = await JS.InvokeAsync<bool>("confirm", "Are you really sure you want to delete this project?");
+        if (!reconfirmed) return;
+
+
+        if (project.ProjectId == LoginInfo.CurrentProject!.ProjectId)
+        {
+            LoginInfo.CurrentProject = (await manager.ProjectDB.GetByIdAsync(1))!;
+        }
+        await manager.ProjectDB.DeleteAsync(project);
+        StateHasChanged();
+    }
+
+    private async void HandleNewProject()
+    {
+        Project NewProject = ProjectDataAccess.GetNew();
+        await manager.ProjectDB.InsertAsync(NewProject);
+        LoginInfo.CurrentProject = NewProject;
+        StateHasChanged();
+    }
+}

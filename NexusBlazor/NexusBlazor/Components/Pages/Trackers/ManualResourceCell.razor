@@ -1,0 +1,165 @@
+﻿@implements IDisposable
+@inject IJSRuntime JS
+@inject Manager manager
+
+@foreach (ResourceBlock block in link.Blocks)
+{
+    <div class="row">
+        <div class="col">
+            @if (ResourceType == ManualResourceType.Employee)
+            {
+                <EmployeeDropdownComponent Employees="Employees" EmployeeId="block.EmployeeId" OnEmployeeUpdate="(employeeId) => EmployeeUpdate(block, employeeId)" />
+            }
+            else if (ResourceType == ManualResourceType.Project)
+            {
+                <ProjectDropdownComponent Projects="Projects" ProjectId="block.ProjectId" OnProjectUpdate="(projectId) => ProjectUpdate(block, projectId)" />
+            }
+        </div>
+        <div class="col-2">
+            <buttton class="add_button" @onclick="() => RemoveBlock(block)">-</buttton>
+        </div>
+    </div>
+}
+<div class="row">
+    <div class="col">
+        @if (link.Blocks.Count == 0)
+        {
+            if (ResourceType == ManualResourceType.Employee)
+            {
+                <button class="hidden-modern-button" @onclick=CopyEmployeeResourcesFromLastWeek>Copy over</button>
+            }
+            else if (ResourceType == ManualResourceType.Project)
+            {
+                <button class="hidden-modern-button" @onclick=CopyProjectResourcesFromLastWeek>Copy over</button>
+            }
+        }
+    </div>
+
+    <div class="col-2">
+        <buttton class="add_button" @onclick=AddBlock>+</buttton>
+    </div>
+
+</div>
+
+@code {
+    [Parameter]
+    public required ManualResourceType ResourceType { get; set; }
+
+    [Parameter]
+    public required int Id { get; set; }
+
+    [Parameter]
+    public required int Year { get; set; }
+
+    [Parameter]
+    public required int Week { get; set; }
+
+    [Parameter]
+    public List<Project> Projects { get; set; } = [];
+
+    private List<Employee> Employees = [];
+
+    ResourceBlockLink link;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if(ResourceType == ManualResourceType.Employee)
+        {
+            link = await manager.ResourceBlockDB.GetProjectResourceBlockLink(Id, Year, Week);
+            Employees = manager.EmployeeDB.GetAllEmployeesActiveWithin(Year, Week).Result.OrderBy(p => p.EmployeeName).ToList();
+        }
+        else if(ResourceType == ManualResourceType.Project)
+        {
+            link = await manager.ResourceBlockDB.GetEmployeeResourceBlockLink(Id, Year, Week);
+        }
+
+        base.OnInitialized();
+        link.PropertyChanged += (_, __) => InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        link.PropertyChanged -= (_, __) => InvokeAsync(StateHasChanged);
+    }
+
+    async void EmployeeUpdate(ResourceBlock block, int employeeId)
+    {
+        block.EmployeeId = employeeId;
+        await manager.ResourceBlockDB.UpdateAsync(block);
+    }
+
+    async void ProjectUpdate(ResourceBlock block, int projectId)
+    {
+        block.ProjectId = projectId;
+        await manager.ResourceBlockDB.UpdateAsync(block);
+    }
+
+    async void AddBlock()
+    {
+        ResourceBlock newBlock;
+        if(ResourceType == ManualResourceType.Employee)
+        {
+            newBlock = new ResourceBlock
+            {
+                EmployeeId = 0,
+                ProjectId = Id,
+                Year = Year,
+                Week = Week,
+            };
+        }
+        else
+        {
+            newBlock = new ResourceBlock
+            {
+                EmployeeId = Id,
+                ProjectId = 0,
+                Year = Year,
+                Week = Week,
+            };
+        }
+        await manager.ResourceBlockDB.InsertAsync(newBlock);
+    }
+
+    async void RemoveBlock(ResourceBlock block)
+    {
+        var confirm = await JS.InvokeAsync<bool>("confirm", "Are you sure you want to delete this block?");
+        if (!confirm) return;
+        await manager.ResourceBlockDB.DeleteAsync(block);
+    }
+
+    async void CopyEmployeeResourcesFromLastWeek()
+    {
+        int copyWeek;
+        int copyYear;
+        if (Week == 1)
+        {
+            copyWeek = 52;
+            copyYear = Year - 1;
+        }
+        else
+        {
+            copyWeek = Week - 1;
+            copyYear = Year;
+        }
+
+        await manager.ResourceBlockDB.CopyProjectResourceBlocksFromWeek(Id, Year, Week, copyYear, copyWeek);
+    }
+
+    async void CopyProjectResourcesFromLastWeek()
+    {
+        int copyWeek;
+        int copyYear;
+        if (Week == 1)
+        {
+            copyWeek = 52;
+            copyYear = Year - 1;
+        }
+        else
+        {
+            copyWeek = Week - 1;
+            copyYear = Year;
+        }
+
+        await manager.ResourceBlockDB.CopyEmployeeResourceBlocksFromWeek(Id, Year, Week, copyYear, copyWeek);
+    }
+}

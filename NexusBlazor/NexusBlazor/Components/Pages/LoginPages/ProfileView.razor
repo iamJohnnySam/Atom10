@@ -1,0 +1,45 @@
+﻿@page "/profile"
+@attribute [Authorize]
+
+@inject LoginInformation LoginInfo
+@inject Manager manager
+
+<div style="padding: 10px 30px 10px 30px;">
+    <h3>Profile</h3>
+
+    <h4>Login Information</h4>
+    @if(LoginInfo.CurrentEmployee == null)
+    {
+        <p><strong>Employee not found</strong></p>
+    }
+    <p><strong>Employee:</strong> @LoginInfo.CurrentEmployee?.EmployeeName</p>
+    <p><strong>Employee ID:</strong> @LoginInfo.CurrentEmployeeId</p>
+    <p><strong>Current Project:</strong> @LoginInfo.CurrentProject.ProjectName</p>
+
+    <br />
+    <br />
+
+    <h4>Cookie Information</h4>
+    <p><strong>Employee:</strong> @LoginInfo.User?.Identity?.Name</p>
+
+    <br />
+
+    <h5>Claims</h5>
+    @foreach (var claim in LoginInfo.User?.Claims)
+    {
+        <p><strong>@claim.Type:</strong> @claim.Value</p>
+    }
+</div>
+
+
+@code {
+    protected override void OnInitialized()
+    {
+        LoginInfo.PropertyChanged += (_, __) => InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        LoginInfo.PropertyChanged -= (_, __) => InvokeAsync(StateHasChanged);
+    }
+}

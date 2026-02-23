@@ -1,0 +1,133 @@
+﻿@inject Manager manager
+@rendermode InteractiveServer
+
+<div>
+    @foreach (TaskItem taskItem in link.IncompleteParentTasks)
+    {
+        <div @onclick="() => ParentTaskSelected(taskItem)">
+            <TaskRow InputTask=taskItem OnTaskUpdated="HandleTaskUpdate" AllEmployees="@AllEmployees" OnTaskSelected="TaskSelected" />
+            <div>
+
+                @if (link.SubTasks.ContainsKey(taskItem.TaskId))
+                {
+                    <div class="@(SelectedParentTaskId == taskItem.TaskId ? showCollapsible : hideCollapsible)">
+                        @foreach (TaskItem subTaskItem in link.SubTasks[taskItem.TaskId].OrderBy(asc => asc.IsCompleted))
+                        {
+                            <div>
+                                <TaskRow InputTask=subTaskItem OnTaskUpdated="HandleTaskUpdate" AllEmployees="@AllEmployees" OnTaskSelected="TaskSelected" />
+                            </div>
+                        }
+                    </div>
+                }
+                @if (SelectedParentTaskId == taskItem.TaskId)
+                {
+                    <NewTask ProjectId=SelectedProject.ProjectId ParentTaskId=taskItem.TaskId OnTaskAdded="HandleTaskAdded" AllActiveEmployees="AllEmployees" />
+                    <hr />
+                }
+            </div>
+        </div>
+    }
+</div>
+@if(link.CompletedParentTasks.Count > 0)
+{
+    <br />
+    <hr />
+    <br />
+}
+<div>
+    @foreach (TaskItem taskItem in link.CompletedParentTasks)
+    {
+        <div @onclick="() => ParentTaskSelected(taskItem)">
+            <TaskRow InputTask=taskItem OnTaskUpdated="HandleTaskUpdate" AllEmployees="@AllEmployees" OnTaskSelected="TaskSelected" />
+            <div>
+
+                @if (link.SubTasks.ContainsKey(taskItem.TaskId))
+                {
+                    <div class="@(SelectedParentTaskId == taskItem.TaskId ? showCollapsible : hideCollapsible)">
+                        @foreach (TaskItem subTaskItem in link.SubTasks[taskItem.TaskId].OrderBy(asc => asc.IsCompleted))
+                        {
+                            <div>
+                                <TaskRow InputTask=subTaskItem OnTaskUpdated="HandleTaskUpdate" AllEmployees="@AllEmployees" OnTaskSelected="TaskSelected" />
+                            </div>
+                        }
+                    </div>
+                }
+                @if (SelectedParentTaskId == taskItem.TaskId)
+                {
+                    <NewTask ProjectId=SelectedProject.ProjectId ParentTaskId=taskItem.TaskId OnTaskAdded="HandleTaskAdded" AllActiveEmployees="AllEmployees" />
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public EventCallback<TaskItem> OnTaskSelected { get; set; }
+
+    [Parameter]
+    public EventCallback OnTaskUpdated { get; set; }
+
+    [Parameter]
+    public required Project SelectedProject { get; set; }
+
+    [Parameter]
+    public bool ShowIncompleteOnly { get; set; } = false;
+
+    private List<Employee> AllEmployees => manager.EmployeeDB.AllActive;
+
+    [Parameter]
+    public int SelectedParentTaskId { get; set; } = 0;
+
+    TaskItemProjectLink link;
+
+    string showCollapsible = "content-show";
+    string hideCollapsible = "content-hidden";
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        link = await manager.TaskItemDB.GetProjectLink(SelectedProject.ProjectId);
+
+        link.PropertyChanged += (_, __) => InvokeAsync(StateHasChanged);
+        manager.EmployeeDB.PropertyChanged += (_, __) => InvokeAsync(StateHasChanged);
+        manager.ProjectDB.PropertyChanged += (_, __) => InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+       link.PropertyChanged -= (_, __) => InvokeAsync(StateHasChanged);
+        manager.EmployeeDB.PropertyChanged -= (_, __) => InvokeAsync(StateHasChanged);
+        manager.ProjectDB.PropertyChanged -= (_, __) => InvokeAsync(StateHasChanged);
+    }
+
+    void ParentTaskSelected(TaskItem task)
+    {
+        SelectedParentTaskId = task.TaskId;
+    }
+
+    async void TaskSelected(TaskItem task)
+    {
+        await OnTaskSelected.InvokeAsync(task);
+    }
+
+    async void HandleTaskUpdate()
+    {
+        await OnTaskUpdated.InvokeAsync();
+    }
+
+    async void HandleTaskAdded(TaskItem task)
+    {
+        task.ProjectId = SelectedProject.ProjectId;
+        await manager.TaskItemDB.InsertAsync(task);
+        if (task.ParentTaskId == 0)
+        {
+            SelectedParentTaskId = 0;
+        }
+    }
+
+    private async void HandleToggleShowComplete(bool showIncomplete)
+    {
+        ShowIncompleteOnly = !showIncomplete;
+    }
+}

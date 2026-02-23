@@ -1,0 +1,22 @@
+﻿@page "/project_timeline"
+@attribute [Authorize]
+@inject Manager manager
+@inject LoginInformation LoginInfo
+@rendermode InteractiveServer
+
+<PageTitle>nexus | Project Timeline | @LoginInfo.CurrentProject.ProjectName</PageTitle>
+<ProjectSelectionRowComponent Title="Project Timeline" />
+
+
+
+@code {
+    protected override void OnInitialized()
+    {
+        LoginInfo.PropertyChanged += (_, __) => InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        LoginInfo.PropertyChanged -= (_, __) => InvokeAsync(StateHasChanged);
+    }
+}

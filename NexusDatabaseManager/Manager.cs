@@ -12,9 +12,10 @@ namespace NexusDatabaseManager;
 public class Manager
 {
     private string _connectionString;
+    public SqliteConnectionString SqliteConnection;
 
-	// DataAccess
-	public ConfigDetailDataAccess ConfigDetailDB { get; }
+    // DataAccess
+    public ConfigDetailDataAccess ConfigDetailDB { get; }
     public ConfigurationDataAccess ConfigurationDB { get; }
     public CustomerDataAccess CustomerDB { get; }
     public DeliverableDataAccess DeliverableDB { get; }
@@ -41,7 +42,8 @@ public class Manager
 
     public Manager()
     {
-        _connectionString = new SqliteConnectionString("NexusDB").ConnectionString;
+        SqliteConnection = new SqliteConnectionString("NexusDB");
+        _connectionString = SqliteConnection.ConnectionString;
 
 		// Employee
 		DesignationDB = new(_connectionString);
@@ -54,8 +56,11 @@ public class Manager
 
         ProjectDB = new(_connectionString);
 
-
-        if (ProjectDB.GetByIdAsync(1).Result == null)
+        try
+        {
+            _ = ProjectDB.GetByIdAsync(1).Result;
+        }
+        catch (AggregateException)
         {
             InitializeDatabase();
         }
@@ -64,32 +69,18 @@ public class Manager
         ConfigurationDB = new(_connectionString);
         SpecificationDB = new(_connectionString);
         ConfigDetailDB = new(_connectionString);
-
-
-        // Tasks
         TaskItemDB = new(_connectionString);
-
         ProjectStageDB = new(_connectionString);
-
         DeliverableDB = new(_connectionString);
-
-
         FunctionalKpiDB = new(_connectionString);
-
-
-
         TimelineItemDB = new(_connectionString);
         MilestoneDB = new(_connectionString);
         MilestoneTemplateDB = new(_connectionString);
         OEMItemDB = new(_connectionString);
-
         ProjectBlockDB = new(_connectionString);
-
         ResourceBlockDB = new(_connectionString);
         ReviewItemDB = new(_connectionString);
         ReviewPointDB = new(_connectionString);
-
-
         SupplierDB = new(_connectionString);
 
         new SqliteLogger().Info($"Manager Created");

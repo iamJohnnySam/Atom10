@@ -8,6 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\BlazorUtilities\BlazorUtilities.csproj" />
     <ProjectReference Include="..\..\Logger\Logger.csproj" />
     <ProjectReference Include="..\..\NexusDatabaseManager\NexusDatabaseManager.csproj" />
     <ProjectReference Include="..\..\NexusDatabaseModels\NexusDatabaseModels.csproj" />

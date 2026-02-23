@@ -1,7 +1,53 @@
 ﻿@page "/"
+@inject Manager manager
+@inject LoginInformation LoginInfo
+@inject SqliteLogger Logger
+@rendermode InteractiveServer
 
-<PageTitle>Home</PageTitle>
+<PageTitle>nexus by iamJohnnySam</PageTitle>
+<section class="hero" id="home">
+        <h1>Welcome to nɛxus</h1>
+    </section>
 
-<h1>Hello, world!</h1>
+<AuthorizeView>
+    <Authorized>
+        <section class="projects" id="projects">
+            @if (manager.ProjectDB.AllItems == null)
+            {
+                <div class="project-card">
+                    <div class="project-title">Loading Projects...</div>
+                    <div class="project-desc">...</div>
+                </div>
+            }
+            else if (manager.ProjectDB.AllItems.Count == 0)
+            {
+                <div class="project-card">
+                    <div class="project-title">NO PROJECTS AVAILABLE</div>
+                    <div class="project-desc">...</div>
+                </div>
+            }
+            else
+            {
+                @foreach (var project in manager.ProjectDB.AllItems)
+                {
+                    <ProjectCard ThisProject=project />
+                }
+            }
+        </section>
+    </Authorized>
+</AuthorizeView>
 
-Welcome to your new app.
+
+@code {
+    protected override void OnInitialized()
+    {
+        Logger.Info("Home Screen Loaded", interaction: "Program startup");
+        manager.ProjectDB.PropertyChanged += (_, __) => InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        manager.ProjectDB.PropertyChanged -= (_, __) => InvokeAsync(StateHasChanged);
+    }
+
+}

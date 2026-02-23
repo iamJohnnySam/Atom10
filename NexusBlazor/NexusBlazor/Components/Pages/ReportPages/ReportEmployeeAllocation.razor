@@ -1,0 +1,82 @@
+﻿@implements IDisposable
+@inject Manager manager
+
+<div style="padding: 10px 20px 10px 20px;">
+    <table style="width: 100%; ">
+        <tr style="border-bottom: 1px solid red;">
+            <th>Employee</th>
+            <th>Designation</th>
+            @for (int i = CurrentWeek; i < CurrentWeek + NumberOfWeeks; i++)
+            {
+                int thisYear = DateTime.Now.Year;
+                int thisWeek = 1;
+                <th style=@cellStyle>
+                    @if (i > 52)
+                    {
+                        thisYear = DateTime.Now.Year + 1;
+                        thisWeek = i % 52;
+                    }
+                    else
+                    {
+                        thisYear = DateTime.Now.Year;
+                        thisWeek = i;
+                    }
+                    Week @(thisWeek) (@CalendarLogic.GetFirstMondayOfWeek(DateTime.Today.Year, thisWeek).ToString("MM/dd"))
+                </th>
+            }
+        </tr>
+
+
+        @foreach (Employee employee in manager.EmployeeDB.AllActive)
+        {
+            <tr>
+                <td>@employee.EmployeeShortName</td>
+                <td>@employee.Designation?.DesignationName</td>
+                @for (int i = CurrentWeek; i < CurrentWeek + NumberOfWeeks; i++)
+                {
+                    <td>
+                        @if (employee.JoinDate <= CalendarLogic.GetFirstMondayOfWeek(CurrentYear, i) && (employee.LeaveDate == null || employee.LeaveDate >= CalendarLogic.GetFirstMondayOfWeek(CurrentYear, i)))
+                        {
+                            <ReportEmployeeBlocks EmployeeId="employee.EmployeeId" Week="i" Year="CurrentYear" />
+                        }
+                        else
+                        {
+                            <span>N/A</span>
+                        }
+                    </td>
+                }
+            </tr>
+        }
+
+
+
+    </table>
+</div>
+
+
+@code {
+    private int CurrentYear { get; set; }
+    private int CurrentWeek { get; set; }
+    private int NumberOfWeeks { get; set; } = 12;
+
+    int cellWidth = 85;
+    string cellStyle = "width: 85px;";
+
+    protected override void OnInitialized()
+    {
+        CurrentYear = DateTime.Now.Year;
+        CurrentWeek = CalendarLogic.WeekOfYear(DateTime.Now);
+        base.OnInitialized();
+        manager.EmployeeDB.PropertyChanged += (_, __) => InvokeAsync(StateHasChanged);
+        cellWidth = (95 * 16) / NumberOfWeeks;
+        cellStyle = $"width: {cellWidth}px; ";
+
+    }
+
+    public void Dispose()
+    {
+        manager.EmployeeDB.PropertyChanged -= (_, __) => InvokeAsync(StateHasChanged);
+    }
+
+    
+}

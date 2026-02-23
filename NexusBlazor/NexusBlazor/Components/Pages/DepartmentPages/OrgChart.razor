@@ -1,0 +1,19 @@
+﻿@page "/department/organization_chart"
+@implements IDisposable
+@attribute [Authorize]
+@inject Manager manager
+
+<OrgChartEmployee Employees="manager.EmployeeDB.AllItems"></OrgChartEmployee>
+
+@code {
+
+    protected override void OnInitialized()
+    {
+        manager.EmployeeDB.PropertyChanged += (_, __) => InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        manager.EmployeeDB.PropertyChanged -= (_, __) => InvokeAsync(StateHasChanged);
+    }
+}

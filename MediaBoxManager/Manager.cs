@@ -10,7 +10,7 @@ public class Manager
 {
 	private readonly string _connectionString;
 	private readonly Scheduler _scheduler;
-	private readonly Configuration _config;
+	private readonly AtomConfiguration _config;
 
 	public Manager()
 	{

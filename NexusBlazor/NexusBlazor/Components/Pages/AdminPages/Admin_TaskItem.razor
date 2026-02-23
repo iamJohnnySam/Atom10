@@ -1,0 +1,39 @@
+﻿@page "/admin/taskitem"
+@implements IDisposable
+@attribute [Authorize(Roles = "Admin")]
+@rendermode InteractiveServer
+@inject Manager manager
+
+<div style="padding: 10px 20px 10px 20px;">
+    <h1>Admin Panel: Task Item</h1>
+    <AdminTable TItem="TaskItem" Metadata="Metadata" Items="manager.TaskItemDB.AllItems" OnSelected="RowClicked" OnDelete="manager.TaskItemDB.DeleteAsync" />
+</div>
+@if (viewForm)
+{
+    <AdminForm TItem="TaskItem" Metadata="Metadata" OnClose="() => viewForm = false" OnDelete="manager.TaskItemDB.DeleteAsync" OnUpdate="manager.TaskItemDB.UpdateAsync"
+        Item="Item"/>
+}
+
+@code {
+    private bool viewForm = false;
+    private TaskItem Item = new();
+
+    private TableMetadata Metadata = TaskItem.Metadata;
+
+    protected override void OnInitialized()
+    {
+        manager.TaskItemDB.PropertyChanged += (_, __) => InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        manager.TaskItemDB.PropertyChanged -= (_, __) => InvokeAsync(StateHasChanged);
+    }
+
+    private void RowClicked(TaskItem item)
+    {
+        viewForm = true;
+        StateHasChanged();
+        Item = item;
+    }
+}
