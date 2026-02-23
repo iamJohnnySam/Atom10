@@ -2,6 +2,7 @@
 using Logger;
 using MediaBoxDatabaseModels;
 using Utilities;
+using Transmission.API.RPC.Entity;
 
 namespace MediaBoxManager;
 
@@ -77,25 +78,24 @@ public class Manager
 		TransmissionManager tm = new(_connectionString, _config.GetField("TRANSMISSION_CONNECT"));
 
 
-		MediaHandler mediaHandler = new(fd.GetField("MEDIA_DOWNLOADS"), fd.GetField("MEDIA_MOVIES"), fd.GetField("MEDIA_SHOWS"), fd.GetField("MEDIA_UNKNOWN"));
-		mediaHandler.OnLogEvent += fd.LogEvent;
+		MediaHandler mediaHandler = new(_config.GetField("MEDIA_DOWNLOADS"), _config.GetField("MEDIA_MOVIES"), _config.GetField("MEDIA_SHOWS"), _config.GetField("MEDIA_UNKNOWN"));
 
-		tm.DeleteTorrentsIfDone(job);
-		mediaHandler.Relocate(job);
-		UpdateLibraryWithTorrents(job, tm.GetTorrents(job));
+		tm.DeleteTorrentsIfDone();
+		mediaHandler.Relocate();
+		UpdateLibraryWithTorrents(tm.GetTorrents());
 	}
 
 	void UpdateLibrary()
 	{
-		Librarian libraryUpdater = new(fd.db, movieTable, fd.GetField("MEDIA_MOVIES"), tvShowTable, fd.GetField("MEDIA_SHOWS"));
+		Librarian libraryUpdater = new(_connectionString, _config.GetField("MEDIA_MOVIES"), _config.GetField("MEDIA_SHOWS"));
 
-		libraryUpdater.UpdateLibrary(job);
+		libraryUpdater.UpdateLibrary();
 	}
 	void UpdateLibraryWithTorrents(List<TorrentInfo> torrents)
 	{
-		Librarian libraryUpdater = new(fd.db, movieTable, fd.GetField("MEDIA_MOVIES"), tvShowTable, fd.GetField("MEDIA_SHOWS"));
+		Librarian libraryUpdater = new(_connectionString, _config.GetField("MEDIA_MOVIES"), _config.GetField("MEDIA_SHOWS"));
 
-		libraryUpdater.UpdateLibrary(job);
-		libraryUpdater.UpdateTorrents(job, torrents);
+		libraryUpdater.UpdateLibrary();
+		libraryUpdater.UpdateTorrents(torrents);
 	}
 }

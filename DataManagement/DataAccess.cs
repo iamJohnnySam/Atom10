@@ -123,7 +123,95 @@ public class DataAccess<T> : INotifyPropertyChanged where T : class
         logger.Info(message: $"Retrieved item of type {typeof(T).Name} where {columnName} = {value}.", interaction: "SQLite");
         return result;
     }
-    public virtual async Task UpdateAsync(T entity)
+
+	public async Task<List<T>> GetByColumnsAsync(Dictionary<string, object> columnValues)
+	{
+		if (columnValues == null || columnValues.Count == 0)
+			throw new ArgumentException("At least one column/value pair must be provided.", nameof(columnValues));
+
+		var tableName = typeof(T).Name;
+
+		var whereBuilder = new StringBuilder();
+		var parameters = new DynamicParameters();
+
+		int index = 0;
+		foreach (var kvp in columnValues)
+		{
+			var paramName = $"p{index++}";
+
+			if (whereBuilder.Length > 0)
+				whereBuilder.Append(" AND ");
+
+			if (kvp.Value == null)
+			{
+				whereBuilder.Append($"{kvp.Key} IS NULL");
+			}
+			else
+			{
+				whereBuilder.Append($"{kvp.Key} = @{paramName}");
+				parameters.Add(paramName, kvp.Value);
+			}
+		}
+
+		var sql = $"SELECT * FROM {tableName} WHERE {whereBuilder} " +
+				  $"ORDER BY {Metadata.SortColumn} {(Metadata.SortDescending ? "DESC" : "ASC")}";
+
+		await using var connection = new SqliteConnection(connectionString);
+		await connection.OpenAsync();
+
+		List<T> result = [.. (await connection.QueryAsync<T>(sql, parameters))];
+
+		logger.Info(
+			message: $"Retrieved {result.Count} items of type {typeof(T).Name} with multiple column filters.",
+			interaction: "SQLite");
+
+		return result;
+	}
+
+	public async Task<T?> GetOneByColumnsAsync(Dictionary<string, object> columnValues)
+	{
+		if (columnValues == null || columnValues.Count == 0)
+			throw new ArgumentException("At least one column/value pair must be provided.", nameof(columnValues));
+
+		var tableName = typeof(T).Name;
+
+		var whereBuilder = new StringBuilder();
+		var parameters = new DynamicParameters();
+
+		int index = 0;
+		foreach (var kvp in columnValues)
+		{
+			var paramName = $"p{index++}";
+
+			if (whereBuilder.Length > 0)
+				whereBuilder.Append(" AND ");
+
+			if (kvp.Value == null)
+			{
+				whereBuilder.Append($"{kvp.Key} IS NULL");
+			}
+			else
+			{
+				whereBuilder.Append($"{kvp.Key} = @{paramName}");
+				parameters.Add(paramName, kvp.Value);
+			}
+		}
+
+		var sql = $"SELECT * FROM {tableName} WHERE {whereBuilder} " +
+				  $"ORDER BY {Metadata.SortColumn} {(Metadata.SortDescending ? "DESC" : "ASC")}";
+
+		await using var connection = new SqliteConnection(connectionString);
+		await connection.OpenAsync();
+
+		var result = await connection.QueryFirstOrDefaultAsync<T>(sql, parameters);
+
+		logger.Info(
+			message: $"Retrieved single {typeof(T).Name} with multiple column filters.",
+			interaction: "SQLite");
+
+		return result;
+	}
+	public virtual async Task UpdateAsync(T entity)
     {
         await using var connection = new SqliteConnection(connectionString);
         await connection.OpenAsync();

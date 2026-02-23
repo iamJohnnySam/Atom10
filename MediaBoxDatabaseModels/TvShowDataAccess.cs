@@ -32,14 +32,20 @@ public class TvShowDataAccess (string connectionString) : DataAccess<TvShow>(con
 			throw new ArgumentException("Column-value pairs cannot be null or empty.");
 		}
 
-		// Dynamically construct the WHERE clause
 		var conditions = string.Join(" AND ", columnValuePairs.Keys.Select(key => $"{key} = @{key}"));
 		var query = $"SELECT 1 FROM TvShow WHERE {conditions} LIMIT 1;";
 
-		// Execute the query and check the result
 		var result = await QueryFirstOrDefaultAsync(query, columnValuePairs);
-
-		// Return true if the combination exists, otherwise false
 		return result != null;
+	}
+
+	public async Task UpdateColumnValueAsync(string columnName, object newValue)
+	{
+		var query = $"UPDATE TvShow SET {columnName} = @NewValue;";
+		var parameters = new Dictionary<string, object>
+			{
+				{ "@NewValue", newValue }
+			};
+		await ExecuteAsync(query, parameters);
 	}
 }

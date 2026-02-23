@@ -26,12 +26,6 @@ public class TransmissionManager
 		List<Magnet> results = await (MagnetDB.GetByColumnAsync("name", showName));
 		if (results.Count == 0)
 		{
-			await (MagnetDB.InsertAsync(new Magnet 
-			{ 
-				MagnetName = showName, 
-				MagnetLink = magnetLink, 
-				Count = 1 
-			}));
 			return false;
 		}
 		{
@@ -57,6 +51,13 @@ public class TransmissionManager
 
 		if (result.ID != 0)
 		{
+			MagnetDB.InsertAsync(new Magnet
+			{
+				MagnetName = torrentName,
+				MagnetLink = torrentPathOrMagnet,
+				Count = 1
+			}).Wait();
+
 			new SqliteLogger().Info($"Added torrent {result.ID}: {result.Name}");
 			new SqliteLogger().Info($"{result.Name} started downloading");
 			return (result.ID, result.Name);

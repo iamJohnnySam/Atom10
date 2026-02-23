@@ -1,4 +1,6 @@
-﻿using MediaBoxManager.Enum;
+﻿using Logger;
+using MediaBoxDatabaseModels;
+using MediaBoxManager.Enum;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -8,168 +10,134 @@ namespace MediaBoxManager;
 
 public class Librarian
 {
-	private readonly DBManager db;
-	private readonly string movieTable;
+	MovieDataAccess MovieDB;
+	TvShowDataAccess TvShowDB;
+
 	private readonly List<string> movieLocations;
-	private readonly string tvShowTable;
 	private readonly List<string> tvShowLocations;
-	readonly MediaTools mediaTools;
 
-	public Librarian(DBManager database, string movieTable, string movieLocations, string tvShowTable, string tvShowLocations)
+	public Librarian(string connectionString, string movieLocations, string tvShowLocations)
 	{
-		this.db = database;
-		this.movieTable = movieTable;
+		MovieDB = new(connectionString);
+		TvShowDB = new(connectionString);
 		this.movieLocations = movieLocations.Split(',').ToList();
-		this.tvShowTable = tvShowTable;
 		this.tvShowLocations = tvShowLocations.Split(',').ToList();
-
-		mediaTools = new MediaTools();
-		mediaTools.OnLogEvent += DebugEvent;
 	}
 
 	public void UpdateLibrary()
 	{
-		db.UpdateColumnValueAsync(movieTable, "exist", 0).Wait();
+		MovieDB.UpdateColumnValueAsync("exist", 0).Wait();
 		foreach (string movieLocation in movieLocations)
 		{
-			Log(job, $"Scanning Location: {movieLocation}");
-			UpdateMovieLibrary(job, movieLocation);
+			new SqliteLogger().Info($"Scanning Location: {movieLocation}");
+			UpdateMovieLibrary(movieLocation);
 		}
 
-		db.UpdateColumnValueAsync(tvShowTable, "exist", 0).Wait();
+		TvShowDB.UpdateColumnValueAsync("exist", 0).Wait();
 		foreach (string tvShowLocation in tvShowLocations)
 		{
-			Log(job, $"Scanning Location: {tvShowLocation}");
-			UpdateTVShowLibrary(job, tvShowLocation);
+			new SqliteLogger().Info($"Scanning Location: {tvShowLocation}");
+			UpdateTVShowLibrary(tvShowLocation);
 		}
 	}
 
-	public void UpdateTorrents(Job job, List<TorrentInfo> torrents)
+	private void MarkMovie(Torrent torrent, string path = "Downloading...")
+	{
+		List<Movie> movies = MovieDB.GetByColumnAsync("movie", torrent.BaseName.Replace("'", "''")).Result;
+		if (movies.Count > 0)
+		{
+			Movie movie = movies[0];
+			movie.Exists = true;
+			movie.Path = path;
+			MovieDB.UpdateAsync(movie).Wait();
+		}
+		else
+		{
+			MovieDB.InsertAsync(new Movie
+			{
+				MovieName = torrent.BaseName,
+				Magnet = torrent.Magnet!,
+				Quality = torrent.Quality,
+				Path = path,
+				Exists = true
+			}).Wait();
+			new SqliteLogger().Info($"Show Added to DB: {torrent.GetLogDetails}\t{path}");
+		}
+	}
+
+	private void MarkTVShow(Torrent torrent, string path = "Downloading...")
+	{
+		List<TvShow> tvShows = TvShowDB.GetByColumnsAsync(new(){
+						{ "tv_show", torrent.BaseName.Replace("'", "''") },
+						{ "season", torrent.Season },
+						{ "episode", torrent.Episode }
+					}).Result;
+		if (tvShows.Count > 0)
+		{
+			TvShow tvShow = tvShows[0];
+			tvShow.Exists = true;
+			tvShow.Path = path;
+			TvShowDB.UpdateAsync(tvShow).Wait();
+		}
+		else
+		{
+			TvShowDB.InsertAsync(new TvShow
+			{
+				ShowName = torrent.BaseName,
+				Season = torrent.Season,
+				Episode = torrent.Episode,
+				Magnet = torrent.Magnet!,
+				Quality = torrent.Quality,
+				Path = path,
+				Exists = true
+			}).Wait();
+			new SqliteLogger().Info($"Show Added to DB: {torrent.GetLogDetails}\t{path}");
+		}
+	}
+
+	public void UpdateTorrents(List<TorrentInfo> torrents)
 	{
 		foreach (TorrentInfo torrent in torrents)
 		{
-			(FileType fileType, VideoType videoType, string baseName, (int season, int episode), string quality) = mediaTools.BreakdownTorrentFileName(job, torrent.Name);
+			Torrent torrentItem = MediaTools.BreakdownTorrentFileName(torrent.Name);
+			torrentItem.Magnet = torrent.MagnetLink;
 
-			if (fileType == FileType.VIDEO && videoType == VideoType.MOVIE)
+			if (torrentItem.IsMovie)
 			{
-				Dictionary<string, object> dataToCheck = new() { { "movie", baseName.Replace("'", "''") } };
-				var taskCheckExist = db.CombinationExistsAsync(movieTable, dataToCheck);
-				bool movieExists = taskCheckExist.Result;
-
-				if (movieExists)
-				{
-					Dictionary<string, object> existsDict = new() { { "exist", 1 } };
-					db.UpdateAsync(movieTable, existsDict, $"movie = '{baseName.Replace("'", "''")}'").Wait();
-				}
-				else
-				{
-					db.InsertAsync(movieTable, new Dictionary<string, object>
-						{
-							{ "movie", baseName },
-							{ "magnet", torrent.MagnetLink },
-							{ "quality", quality }
-						}).Wait();
-					Log(job, $"Show Added to DB: {videoType}\t{baseName}\t{quality}");
-				}
+				MarkMovie(torrentItem);
 			}
 
-			else if (fileType == FileType.VIDEO && videoType == VideoType.SHOW)
+			else if (torrentItem.IsTvShow)
 			{
-				Dictionary<string, object> dataToCheck = new(){
-						{ "tv_show", baseName.Replace("'", "''") },
-						{ "season", season },
-						{ "episode", episode }
-					};
-				var taskCheckExist = db.CombinationExistsAsync(tvShowTable, dataToCheck);
-				bool showExists = taskCheckExist.Result;
-
-				if (showExists)
-				{
-					Dictionary<string, object> existsDict = new() { { "exist", 1 } };
-					db.UpdateAsync(tvShowTable, existsDict, $"tv_show = '{baseName.Replace("'", "''")}' AND season = '{season}' AND episode = '{episode}'").Wait();
-				}
-				else
-				{
-					db.InsertAsync(tvShowTable, new Dictionary<string, object>
-						{
-							{ "tv_show", baseName },
-							{ "season", season },
-							{ "episode", episode },
-							{ "magnet", torrent.MagnetLink },
-							{ "quality", quality }
-						}).Wait();
-					Log(job, $"Show Added to DB: {videoType}\t{baseName}\t{season}x{episode}\t{quality}");
-				}
+				MarkTVShow(torrentItem);
 			}
 		}
 	}
 
-	private void UpdateMovieLibrary(Job job, string movieLoc)
+	private void UpdateMovieLibrary(string movieLoc)
 	{
-		List<string> movieList = mediaTools.GetAllVideoFiles(movieLoc);
+		List<string> movieList = MediaTools.GetAllVideoFiles(movieLoc);
 		foreach (string movie in movieList)
 		{
-			(FileType fileType, VideoType videoType, string baseName, (_, _), string quality) = mediaTools.BreakdownTorrentFileName(job, movie.Split("/").Last());
+			Torrent torrent = MediaTools.BreakdownTorrentFileName(movie.Split("/").Last());
 
-			if (fileType == FileType.VIDEO)
+			if (torrent.FileType == FileType.VIDEO)
 			{
-				Dictionary<string, object> dataToCheck = new() { { "movie", baseName.Replace("'", "''") } };
-				var taskCheckExist = db.CombinationExistsAsync(movieTable, dataToCheck);
-				bool movieExists = taskCheckExist.Result;
-
-				if (movieExists)
-				{
-					Dictionary<string, object> existsDict = new() { { "exist", 1 }, { "path", movie.Replace(movieLoc, "") } };
-					db.UpdateAsync(movieTable, existsDict, $"movie = '{baseName.Replace("'", "''")}'").Wait();
-				}
-				else
-				{
-					db.InsertAsync(movieTable, new Dictionary<string, object>
-						{
-							{ "movie", baseName },
-							{ "path", movie.Replace(movieLoc, "") },
-							{ "quality", quality }
-						}).Wait();
-					Log(job, $"Show Added: {videoType}\t{baseName}\t{quality}\t{movie.Replace(movieLoc, "")}");
-				}
+				MarkMovie(torrent, movie.Replace(movieLoc, ""));
 			}
 		}
 	}
 
-	private void UpdateTVShowLibrary(Job job, string tvShowLoc)
+	private void UpdateTVShowLibrary(string tvShowLoc)
 	{
-		List<string> tvShowList = mediaTools.GetAllVideoFiles(tvShowLoc);
+		List<string> tvShowList = MediaTools.GetAllVideoFiles(tvShowLoc);
 		foreach (string tvShow in tvShowList)
 		{
-			(FileType fileType, VideoType videoType, string baseName, (int season, int episode), string quality) = mediaTools.BreakdownTorrentFileName(job, tvShow.Split("/").Last());
+			Torrent torrent = MediaTools.BreakdownTorrentFileName(tvShow.Split("/").Last());
 
-			if (fileType == FileType.VIDEO)
+			if (torrent.FileType == FileType.VIDEO)
 			{
-				Dictionary<string, object> dataToCheck = new(){
-						{ "tv_show", baseName.Replace("'", "''") },
-						{ "season", season },
-						{ "episode", episode }
-					};
-				var taskCheckExist = db.CombinationExistsAsync(tvShowTable, dataToCheck);
-				bool showExists = taskCheckExist.Result;
-
-				if (showExists)
-				{
-					Dictionary<string, object> existsDict = new() { { "exist", 1 }, { "path", tvShow.Replace(tvShowLoc, "") } };
-					db.UpdateAsync(tvShowTable, existsDict, $"tv_show = '{baseName.Replace("'", "''")}' AND season = '{season}' AND episode = '{episode}'").Wait();
-				}
-				else
-				{
-					db.InsertAsync(tvShowTable, new Dictionary<string, object>
-						{
-							{ "tv_show", baseName },
-							{ "season", season },
-							{ "episode", episode },
-							{ "path", tvShow.Replace(tvShowLoc, "") },
-							{ "quality", quality }
-						}).Wait();
-					Log(job, $"Show Added: {videoType}\t{baseName}\t{season}x{episode}\t{quality}\t{tvShow.Replace(tvShowLoc, "")}");
-				}
+				MarkTVShow(torrent, tvShow.Replace(tvShowLoc, ""));
 			}
 
 		}

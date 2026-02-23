@@ -1,4 +1,5 @@
-﻿using MediaBoxManager.Enum;
+﻿using Logger;
+using MediaBoxManager.Enum;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -33,47 +34,46 @@ public class MediaHandler
 
 		if (files.Length == 0 && directories.Length == 0)
 		{
-			Debug(job, "Nothing to refactor");
+			new SqliteLogger().Info("Nothing to refactor");
 			return false;
 		}
-		job.BackgroundTask = false;
-		Debug(job, $"Found {files.Length} Files and {directories.Length} Directories in {PathDownload}");
-		Debug(job, $"Files -> {String.Join(",", files)}");
-		Debug(job, $"Directories -> {String.Join(",", directories)}");
+		new SqliteLogger().Info($"Found {files.Length} Files and {directories.Length} Directories in {PathDownload}");
+		new SqliteLogger().Info($"Files -> {String.Join(",", files)}");
+		new SqliteLogger().Info($"Directories -> {String.Join(",", directories)}");
 		return true;
 	}
 
-	public void Relocate(Job job)
+	public void Relocate()
 	{
-		if (!CheckDownloadsAvaialble(job))
+		if (!CheckDownloadsAvaialble())
 		{
-			Inform(job, "No New Downloads");
+			new SqliteLogger().Info("No New Downloads");
 		}
 		string sendString = "New Additions:";
 
-		Debug(job, $"Sorting external files.");
+		new SqliteLogger().Info("Sorting external files.");
 		string[] files = Directory.GetFiles(PathDownload);
 		string[] directories = Directory.GetDirectories(PathDownload);
 
-		sendString += SortTorrentFiles(job, files, directories);
+		sendString += SortTorrentFiles(files, directories);
 
-		Debug(job, $"Sorting Folders");
+		new SqliteLogger().Info("Sorting Folders");
 		foreach (string directory in directories)
 		{
 			string[] files1 = Directory.GetFiles(directory);
 			string[] directories1 = Directory.GetDirectories(directory);
-			Debug(job, $"Found {files1.Length} files and {directories1.Length} directories in {directory}");
-			sendString += SortTorrentFiles(job, files1, directories1);
-			DeleteSubDirectoriesIfEmpty(job, directory);
+			new SqliteLogger().Info($"Found {files1.Length} files and {directories1.Length} directories in {directory}");
+			sendString += SortTorrentFiles(files1, directories1);
+			DeleteSubDirectoriesIfEmpty(directory);
 		}
-		Inform(job, sendString);
+		new SqliteLogger().Info(sendString);
 	}
 
-	private void DeleteSubDirectoriesIfEmpty(Job job, string startLocation)
+	private void DeleteSubDirectoriesIfEmpty(string startLocation)
 	{
 		foreach (var directory in Directory.GetDirectories(startLocation))
 		{
-			DeleteSubDirectoriesIfEmpty(job, directory);
+			DeleteSubDirectoriesIfEmpty(directory);
 			if (Directory.GetFiles(directory).Length == 0 && Directory.GetDirectories(directory).Length == 0)
 			{
 				try
@@ -82,7 +82,7 @@ public class MediaHandler
 				}
 				catch (DirectoryNotFoundException)
 				{
-					Log(job, $"Delete failed: {directory}");
+					new SqliteLogger().Info($"Delete failed: {directory}");
 				}
 			}
 			if (Directory.GetFiles(startLocation).Length == 0 && Directory.GetDirectories(startLocation).Length == 0)
@@ -92,7 +92,7 @@ public class MediaHandler
 		}
 	}
 
-	private (bool isSameBaseName, VideoType videoType, string baseName) CheckIfSameBaseName(Job job, IEnumerable<string> files)
+	private (bool isSameBaseName, VideoType videoType, string baseName) CheckIfSameBaseName(IEnumerable<string> files)
 	{
 		List<string> availableBaseNames = [];
 
@@ -101,75 +101,75 @@ public class MediaHandler
 
 		foreach (string fileName in files)
 		{
-			(FileType fileType, VideoType videoType, string baseName, _, _) = MediaTools.BreakdownTorrentFileName(job, fileName);
-			string checkFile = $"{videoType}-{baseName}";
-			if (fileType == FileType.VIDEO && !availableBaseNames.Contains(checkFile))
+			Torrent torrent = MediaTools.BreakdownTorrentFileName(fileName);
+			string checkFile = $"{torrent.VideoType}-{torrent.BaseName}";
+			if (torrent.FileType == FileType.VIDEO && !availableBaseNames.Contains(checkFile))
 			{
 				availableBaseNames.Add(checkFile);
-				lastValidVideoType = videoType;
-				lastBaseName = baseName;
+				lastValidVideoType = torrent.VideoType;
+				lastBaseName = torrent.BaseName;
 			}
 		}
 
 		if (availableBaseNames.Count == 1)
 		{
-			Debug(job, $"Group of videos in directory belongs to {lastBaseName}.");
+			new SqliteLogger().Info($"Group of videos in directory belongs to {lastBaseName}.");
 			return (true, lastValidVideoType, lastBaseName);
 		}
 		else if (availableBaseNames.Count == 0)
 		{
 			// todo:
 		}
-		Debug(job, $"Group of videos in directory are mixed. -> {String.Join(",", availableBaseNames)}");
+		new SqliteLogger().Info($"Group of videos in directory are mixed. -> {String.Join(",", availableBaseNames)}");
 		return (false, VideoType.OTHER, lastBaseName);
 	}
 
-	private string SortTorrentFiles(Job job, IEnumerable<string> files, IEnumerable<string> directories)
+	private string SortTorrentFiles(IEnumerable<string> files, IEnumerable<string> directories)
 	{
 		string refactoredFiles = string.Empty;
 
-		(bool isSameBaseName, VideoType sameVideoType, string SameBaseName) = CheckIfSameBaseName(job, files);
+		(bool isSameBaseName, VideoType sameVideoType, string SameBaseName) = CheckIfSameBaseName(files);
 
 		if (isSameBaseName)
 		{
 			foreach (string fileName in files)
 			{
-				Debug(job, $"Sorting file {fileName} in base {SameBaseName}.");
-				(FileType fileType, _, _, _, _) = MediaTools.BreakdownTorrentFileName(job, fileName);
-				refactoredFiles += MoveFile(job, fileType, sameVideoType, SameBaseName, fileName);
+				new SqliteLogger().Info($"Sorting file {fileName} in base {SameBaseName}.");
+				Torrent torrent = MediaTools.BreakdownTorrentFileName(fileName);
+				refactoredFiles += MoveFile(torrent.FileType, sameVideoType, SameBaseName, fileName);
 			}
 			foreach (string directory in directories)
 			{
-				Debug(job, $"Sorting folder {directory}");
+				new SqliteLogger().Info($"Sorting folder {directory}");
 				string[] files1 = Directory.GetFiles(directory);
 				string[] directories1 = Directory.GetDirectories(directory);
 
 				if (directory.Contains("Subs"))
 				{
-					Debug(job, $"Moving subs folder of {SameBaseName}.");
-					MoveSubsFolder(job, directory, sameVideoType, SameBaseName);
+					new SqliteLogger().Info($"Moving subs folder of {SameBaseName}.");
+					MoveSubsFolder(directory, sameVideoType, SameBaseName);
 				}
 
-				Debug(job, $"Found {files1.Length} files and {directories1.Length} directories in {directory}");
+				new SqliteLogger().Info($"Found {files1.Length} files and {directories1.Length} directories in {directory}");
 
-				refactoredFiles += SortTorrentFiles(job, files1, directories1);
+				refactoredFiles += SortTorrentFiles(files1, directories1);
 			}
 		}
 		else
 		{
 			foreach (string fileName in files)
 			{
-				Debug(job, $"Sorting file {fileName}.");
-				(FileType fileType, VideoType videoType, string baseName, _, _) = MediaTools.BreakdownTorrentFileName(job, fileName);
-				refactoredFiles += MoveFile(job, fileType, videoType, baseName, fileName);
+				new SqliteLogger().Info($"Sorting file {fileName}.");
+				Torrent torrent = MediaTools.BreakdownTorrentFileName(fileName);
+				refactoredFiles += MoveFile(torrent.FileType, torrent.VideoType, torrent.BaseName, fileName);
 			}
 		}
 		return refactoredFiles;
 	}
 
-	private string MoveFile(Job job, FileType fileType, VideoType destinationFolder, string baseName, string fileName)
+	private string MoveFile(FileType fileType, VideoType destinationFolder, string baseName, string fileName)
 	{
-		Debug(job, $"Preparing to move File, {fileName}.");
+		new SqliteLogger().Info($"Preparing to move File, {fileName}.");
 
 		string refactoredFiles = string.Empty;
 		string newLocation;
@@ -196,7 +196,7 @@ public class MediaHandler
 			newLocation = Path.Combine(PathUnknown, baseName);
 		}
 
-		FileManager.CreateFolderIfNotExist(job, newLocation);
+		FileManager.CreateFolderIfNotExist(newLocation);
 		string newDesitnation = Path.Combine(newLocation, Path.GetFileName(fileName));
 		try
 		{
@@ -210,40 +210,40 @@ public class MediaHandler
 			}
 			File.Move(fileName, newDesitnation);
 		}
-		Log(job, $"Moved '{fileName}' -> '{newDesitnation}'");
+		new SqliteLogger().Info($"Moved '{fileName}' -> '{newDesitnation}'");
 		return refactoredFiles;
 	}
 
-	private void MoveSubsFolder(Job job, string subsFolder, VideoType destinationFolder, string baseName)
+	private void MoveSubsFolder(string subsFolder, VideoType destinationFolder, string baseName)
 	{
 		string[] subFiles = Directory.GetFiles(subsFolder);
-		Debug(job, $"Found {subFiles.Length} Subtitle Files for {baseName}.");
+		new SqliteLogger().Info($"Found {subFiles.Length} Subtitle Files for {baseName}.");
 
 		string? destination = null;
 
 		if (destinationFolder == VideoType.MOVIE)
 		{
 			destination = Path.Combine(PathMovies, baseName, "Subs");
-			FileManager.CreateFolderIfNotExist(job, destination);
+			FileManager.CreateFolderIfNotExist(destination);
 		}
 		else if (destinationFolder == VideoType.SHOW)
 		{
 			destination = Path.Combine(PathShows, baseName, "Subs");
-			FileManager.CreateFolderIfNotExist(job, destination);
+			FileManager.CreateFolderIfNotExist(destination);
 		}
 
 		if (destination != null)
 		{
 			foreach (var file in subFiles)
 			{
-				Debug(job, $"Found Sub File {file}");
+				new SqliteLogger().Info($"Found Sub File {file}");
 				var filePath = Path.Combine(subsFolder, file);
 				var destinationPath = Path.Combine(destination, file);
 
 				File.Move(filePath, destinationPath);
-				Log(job, $"Moved {filePath} -> {destinationPath}");
+				new SqliteLogger().Info($"Moved {filePath} -> {destinationPath}");
 			}
 		}
-		DeleteSubDirectoriesIfEmpty(job, subsFolder);
+		DeleteSubDirectoriesIfEmpty(subsFolder);
 	}
 }

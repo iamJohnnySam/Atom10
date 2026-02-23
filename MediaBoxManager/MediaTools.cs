@@ -109,7 +109,7 @@ public static class MediaTools
 		}
 		return (success, season, episode, matchStart, matchEnd);
 	}
-	public static (FileType fileType, VideoType videoType, string baseName, (int season, int episode), string quality) BreakdownTorrentFileName(string fileName)
+	internal static Torrent BreakdownTorrentFileName(string fileName)
 	{
 		fileName = Path.GetFileName(fileName);
 		VideoType videoType = VideoType.OTHER;
@@ -123,7 +123,16 @@ public static class MediaTools
 		{
 			(videoType, baseName, (season, episode), quality) = BreakdownVideoTitle(fileName);
 		}
-		return (fileType, videoType, baseName, (season, episode), quality);
+		return new Torrent()
+		{ 
+			TorrentName = fileName,
+			BaseName = baseName,
+			Season = season,
+			Episode = episode,
+			Quality = quality,
+			FileType = fileType,
+			VideoType = videoType
+		};
 	}
 	public static (VideoType videoType, string baseName, (int season, int episode), string quality) BreakdownVideoTitle(string fileName)
 	{
