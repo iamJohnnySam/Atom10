@@ -1,9 +1,12 @@
 <Solution>
+  <Project Path="BlazorUtilities/BlazorUtilities.csproj" Id="5fbdf88b-ba41-4427-a9d6-a14d96118b27" />
   <Project Path="DataManagement/DataManagement.csproj" Id="d5b8e9e8-91a4-4ba3-a650-2eaba1123e23" />
   <Project Path="Logger/Logger.csproj" Id="9e45c60b-5862-48b2-9276-b0ca76297639" />
   <Project Path="MediaBoxDatabaseModels/MediaBoxDatabaseModels.csproj" Id="3df23f9c-8496-4b16-bd82-669c13ea2f61" />
   <Project Path="MediaBoxManager/MediaBoxManager.csproj" Id="f79ece8b-bcd5-4461-a6e1-7a8d222c7681" />
   <Project Path="MediaBoxWebApp/MediaBoxWebApp.csproj" Id="c6195664-cb1c-4924-8b62-64dc6bf09533" />
+  <Project Path="NexusBlazor/NexusBlazor.Client/NexusBlazor.Client.csproj" Id="f37d5f2c-eed8-4207-a568-290007b500aa" />
+  <Project Path="NexusBlazor/NexusBlazor/NexusBlazor.csproj" Id="1a12abff-b651-46a3-ac46-ca5bf5b0331f" />
   <Project Path="NexusDatabaseManager/NexusDatabaseManager.csproj" Id="c4857bfd-dc71-4d0f-b6bd-2988b3e3ba6e" />
   <Project Path="NexusDatabaseModels/NexusDatabaseModels.csproj" Id="0f8a35b6-ac97-468c-9c31-e682d8dad386" />
   <Project Path="Utilities/Utilities.csproj" Id="0bac1c90-c465-480a-832a-6d3ef7fbda58" />

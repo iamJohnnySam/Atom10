@@ -9,7 +9,7 @@ using System.Text;
 
 namespace NexusDatabaseManager;
 
-public class ManagerNexus
+public class Manager
 {
     private string _connectionString;
 
@@ -39,7 +39,7 @@ public class ManagerNexus
     public SupplierDataAccess SupplierDB { get; }
     public TaskItemDataAccess TaskItemDB { get; }
 
-    public ManagerNexus()
+    public Manager()
     {
         _connectionString = new SqliteConnectionString("NexusDB").ConnectionString;
 
