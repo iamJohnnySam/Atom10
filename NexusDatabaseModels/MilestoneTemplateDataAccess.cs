@@ -1,4 +1,4 @@
-﻿using NexusDatabaseManager.DataManagement;
+﻿using DataManagement;
 using System;
 using System.Collections.Generic;
 using System.Text;

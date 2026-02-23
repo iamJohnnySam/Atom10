@@ -14,7 +14,9 @@ public class Configuration
     public string ConfigurationName { get; set; } = "New Configuration";
     public string ConfigurationDescription { get; set; } = string.Empty;
     public int ProjectId { get; set; }
+    public Project? Project { get; set; }
     public int ProductModuleId { get; set; }
+    public ProductModule? ProductModule { get; set; }
     public int Quantity { get; set; } = 1;
     public bool IsAddOn { get; set; }
     public bool IsRequired { get; set; }

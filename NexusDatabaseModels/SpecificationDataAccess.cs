@@ -1,0 +1,39 @@
+﻿using DataManagement;
+using System;
+using System.Collections.Generic;
+using System.Text;
+
+namespace NexusDatabaseModels;
+
+public class SpecificationDataAccess(string connectionString) : DataAccess<Specification>(connectionString, Specification.Metadata)
+{
+    ProductModuleDataAccess ProductModuleDB = new(connectionString);
+
+    public override async Task GetAllAsync()
+    {
+        await base.GetAllAsync();
+        foreach (Specification item in AllItems)
+        {
+            item.ProductModule = await ProductModuleDB.GetByIdAsync(item.ProductModuleId);
+        }
+        AllItems = [.. AllItems.OrderBy(rank => rank.ProductModule!.Rank).ThenBy(rank => rank.ProductModule!.ModuleId).ThenBy(rank => rank.Rank)];
+    }
+
+    public override async Task<Specification?> GetByIdAsync(int id)
+    {
+        var item = await base.GetByIdAsync(id);
+        if (item != null)
+            item.ProductModule = await ProductModuleDB.GetByIdAsync(item.ProductModuleId);
+        return item;
+    }
+
+    public async Task<List<Specification>> GetByProductModuleIdAsync(int productModuleId)
+    {
+        var items = await GetByColumnAsync(nameof(Specification.ProductModuleId), productModuleId);
+        foreach (Specification item in items)
+        {
+            item.ProductModule = await ProductModuleDB.GetByIdAsync(item.ProductModuleId);
+        }
+        return [.. items.OrderBy(rank => rank.ProductModule!.Rank).ThenBy(rank => rank.Rank)];
+    }
+}

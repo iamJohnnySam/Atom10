@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using Utilities;
 
 namespace NexusDatabaseModels;
 
@@ -32,7 +33,7 @@ public class EmployeeDataAccess(string connectionString) : DataAccess<Employee>(
     }
 
 
-    internal override async Task ReloadCachedData()
+    public override async Task ReloadCachedData()
     {
         await GetAllActiveAsync();
         await base.ReloadCachedData();
@@ -43,8 +44,8 @@ public class EmployeeDataAccess(string connectionString) : DataAccess<Employee>(
     {
         if (emp != null)
         {
-            emp.EmployeeGrade = await GradeDB.GetByIdAsync(emp.GradeId);
-            emp.EmployeeDesignation = await DesignationDB.GetByIdAsync(emp.DesignationId);
+            emp.Grade = await GradeDB.GetByIdAsync(emp.GradeId);
+            emp.Designation = await DesignationDB.GetByIdAsync(emp.DesignationId);
             if (emp.ReplacedEmployeeId != 0)
                 emp.ReplacedEmployee = await GetByIdAsync(emp.ReplacedEmployeeId);
             if (emp.LineManagerId != 0)
@@ -63,8 +64,8 @@ public class EmployeeDataAccess(string connectionString) : DataAccess<Employee>(
         }
 
         AllActive = [.. employees
-            .OrderBy(e => e.EmployeeDesignation!.DesignationName)
-            .ThenByDescending(e => e.EmployeeGrade!.GradeScore)];
+            .OrderBy(e => e.Designation!.DesignationName)
+            .ThenByDescending(e => e.Grade!.GradeScore)];
     }
 
     public async Task<List<Employee>> GetAllEmployeesActiveWithin(int year, int WeekNumber)
@@ -135,8 +136,8 @@ public class EmployeeDataAccess(string connectionString) : DataAccess<Employee>(
         }
 
         List<Employee> groupedAndSorted = [.. employees
-            .OrderBy(e => e.EmployeeDesignation!.DesignationName)
-            .ThenByDescending(e => e.EmployeeGrade!.GradeScore)];
+            .OrderBy(e => e.Designation!.DesignationName)
+            .ThenByDescending(e => e.Grade!.GradeScore)];
 
         return groupedAndSorted;
     }

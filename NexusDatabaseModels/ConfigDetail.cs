@@ -12,7 +12,9 @@ public class ConfigDetail
     [Key]
     public int ConfigDetailId { get; set; }
     public int ConfigurationId { get; set; }
+    public Configuration? Configuration { get; set; }
     public int SpecificationId { get; set; }
+    public Specification? Specification { get; set; }
     public string SpecificationDetail { get; set; } = string.Empty;
     public string Comments { get; set; } = string.Empty;
     public int Revision { get; set; } = 0;

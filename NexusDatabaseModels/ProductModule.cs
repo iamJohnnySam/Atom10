@@ -1,5 +1,6 @@
 ﻿using DataManagement;
 using DataManagement.Enum;
+using NexusDatabaseModels.Enum;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
@@ -12,7 +13,7 @@ public class ProductModule
     [Key]
     public int ModuleId { get; set; }
     public string ModuleName { get; set; } = "Untitled Module";
-    public EModuleType ModuleType { get; set; } = EModuleType.None;
+    public ModuleType ModuleType { get; set; } = ModuleType.None;
     public int Rank { get; set; }
 
     public static TableMetadata Metadata => new(

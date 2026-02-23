@@ -1,4 +1,4 @@
-﻿using NexusDatabaseManager.DataManagement;
+﻿using DataManagement;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -7,8 +7,8 @@ namespace NexusDatabaseModels;
 
 public class ConfigurationDataAccess(string connectionString) : DataAccess<Configuration>(connectionString, Configuration.Metadata)
 {
-    ProjectDataAccess ProjectDB = projectDB;
-    ProductModuleDataAccess ProductModuleDB = productModuleDB;
+    ProjectDataAccess ProjectDB = new(connectionString);
+    ProductModuleDataAccess ProductModuleDB = new(connectionString);
     private async Task GetItems(Configuration config)
     {
         config.Project = await ProjectDB.GetByIdAsync(config.ProjectId);

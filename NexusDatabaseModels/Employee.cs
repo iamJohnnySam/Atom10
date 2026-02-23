@@ -22,12 +22,16 @@ public class Employee
         }
     }
     public int GradeId { get; set; }
+    public Grade? Grade { get; set; }
     public int DesignationId { get; set; }
+    public Designation? Designation { get; set; }
     public DateTime JoinDate { get; set; }
     public DateTime? LeaveDate { get; set; }
     public bool IsActive { get; set; } = true;
     public int ReplacedEmployeeId { get; set; } = 0;
+    public Employee? ReplacedEmployee { get; set; }
     public int LineManagerId { get; set; } = 0;
+    public Employee? LineManager { get; set; }
 
     public static TableMetadata Metadata => new(
         typeof(Employee).Name,

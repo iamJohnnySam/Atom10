@@ -1,10 +1,11 @@
-﻿using Logger;
+﻿using DataManagement;
+using Logger;
 using NexusDatabaseModels;
+using NexusDatabaseModels.Enum;
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Text;
-using Utilities;
 
 namespace NexusDatabaseManager;
 
@@ -25,7 +26,7 @@ public class ManagerNexus
     public TimelineItemDataAccess TimelineItemDB { get; }
     public MilestoneDataAccess MilestoneDB { get; }
     public MilestoneTemplateDataAccess MilestoneTemplateDB { get; }
-    public OEMItemDataAccess OEMItemDB { get; }
+    public OemItemDataAccess OEMItemDB { get; }
     public ProductDataAccess ProductDB { get; }
     public ProductModuleDataAccess ProductModuleDB { get; }
     public ProjectDataAccess ProjectDB { get; }
@@ -34,14 +35,9 @@ public class ManagerNexus
     public ResourceBlockDataAccess ResourceBlockDB { get; }
     public ReviewItemDataAccess ReviewItemDB { get; }
     public ReviewPointDataAccess ReviewPointDB { get; }
-    public SimulationScenarioDataAccess SimulationScenarioDB { get; }
-    public SimulationStationDataAccess SimulationStationDB { get; }
-    public SimulationManipulatorDataAccess SimulationManipulatorDB { get; }
-    public SimulationProcessDataAccess SimulationProcessDB { get; }
     public SpecificationDataAccess SpecificationDB { get; }
     public SupplierDataAccess SupplierDB { get; }
     public TaskItemDataAccess TaskItemDB { get; }
-    public FlowElementDataAccess FlowElementDB { get; }
 
     public ManagerNexus()
     {
@@ -93,13 +89,8 @@ public class ManagerNexus
         ReviewItemDB = new(_connectionString);
         ReviewPointDB = new(_connectionString);
 
-        SimulationScenarioDB = new(_connectionString);
-        SimulationStationDB = new(_connectionString);
-        SimulationManipulatorDB = new(_connectionString);
-        SimulationProcessDB = new(_connectionString);
 
         SupplierDB = new(_connectionString);
-        FlowElementDB = new(_connectionString);
 
         new SqliteLogger().Info($"Manager Created");
     }
@@ -117,8 +108,8 @@ public class ManagerNexus
             ProjectName = "General",
             CustomerId = newCustomer.CustomerId,
             DesignCode = "GENERAL",
-            Priority = EProjectPriority.Normal,
-            POStatus = ESalesStatus.Concept,
+            Priority = ProjectPriority.Normal,
+            POStatus = SalesStatus.Concept,
             ProductId = newProduct.ProductId,
         };
         ProjectDB.InsertAsync(newProject).Wait();

@@ -1,4 +1,4 @@
-﻿using NexusDatabaseManager.DataManagement;
+﻿using DataManagement;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -7,15 +7,15 @@ namespace NexusDatabaseModels;
 
 public class ConfigDetailDataAccess(string connectionString) : DataAccess<ConfigDetail>(connectionString, ConfigDetail.Metadata)
 {
-    ConfigurationDataAccess ConfigurationDB = configurationDB;
-    SpecificationDataAccess SpecificationDB = specificationDB;
+    ConfigurationDataAccess ConfigurationDB = new(connectionString);
+    SpecificationDataAccess SpecificationDB = new(connectionString);
     private async Task GetItems(ConfigDetail item)
     {
         item.Configuration = await ConfigurationDB.GetByIdAsync(item.ConfigurationId);
         item.Specification = await SpecificationDB.GetByIdAsync(item.SpecificationId);
     }
 
-    internal override async Task GetAllAsync()
+    public override async Task GetAllAsync()
     {
         await base.GetAllAsync();
         foreach (ConfigDetail item in AllItems)
