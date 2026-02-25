@@ -13,11 +13,13 @@ public class TransmissionManager
 {
 	private readonly MagnetDataAccess MagnetDB;
 	private readonly Client _client;
+	private readonly string url;
 
 	public TransmissionManager(string connectionString, string url, string username = "", string password = "")
 	{
 		MagnetDB = new(connectionString);
 		_client = new(url, username, password);
+		this.url = url;
 	}
 
 	public async Task<bool> CheckIfExists(string name, string magnetLink)
@@ -75,6 +77,7 @@ public class TransmissionManager
 		}
 		catch (Exception e)
 		{
+			new SqliteLogger().Info($"Transmission Connect Failure: {url}");
 			throw new Exception($"Transmission Connect Failure", e);
 		}
 		if (torrents != null && torrents.Torrents.Length > 0)

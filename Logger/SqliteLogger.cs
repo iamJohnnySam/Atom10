@@ -22,6 +22,8 @@ public class SqliteLogger : IDisposable
 
     public SqliteLogger()
     {
+        // todo: make singleton
+
         string dbFileName = "LoggerDB.sqlite";
         string dbPath = RuntimeInformation.IsOSPlatform(OSPlatform.Linux)
             ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), dbFileName)
@@ -34,7 +36,7 @@ public class SqliteLogger : IDisposable
 
         // Start background writer
         _backgroundTask = Task.Run(ProcessQueueAsync);
-    }
+	}
 
     public void SetSessionContext(string sessionId, string userName)
     {
@@ -123,16 +125,19 @@ public class SqliteLogger : IDisposable
     }
 
     public void Info(string message, string interaction = "Program output", [CallerMemberName] string method = "", [CallerFilePath] string file = "")
-        => Enqueue("INFO", message, interaction, method, file);
+        => Enqueue("INF", message, interaction, method, file);
 
-    public void Warn(string message, string interaction = "Program output", [CallerMemberName] string method = "", [CallerFilePath] string file = "")
-        => Enqueue("WARN", message, interaction, method, file);
+	public void Debug(string message, string interaction = "Program output", [CallerMemberName] string method = "", [CallerFilePath] string file = "")
+		=> Enqueue("DBG", message, interaction, method, file);
+
+	public void Warn(string message, string interaction = "Program output", [CallerMemberName] string method = "", [CallerFilePath] string file = "")
+        => Enqueue("WRN", message, interaction, method, file);
 
     public void Error(string message, string interaction = "Program output", [CallerMemberName] string method = "", [CallerFilePath] string file = "")
-        => Enqueue("ERROR", message, interaction, method, file);
+        => Enqueue("ERR", message, interaction, method, file);
 
     public void Error(Exception ex, string interaction = "Program output", [CallerMemberName] string method = "", [CallerFilePath] string file = "")
-        => Enqueue("ERROR", FormatException(ex), interaction, method, file);
+        => Enqueue("ERR", FormatException(ex), interaction, method, file);
 
     private static string FormatException(Exception ex)
     {

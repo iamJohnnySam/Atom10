@@ -15,7 +15,7 @@ public class Movie
 	public string MovieName { get; set; } = "UnNamed Show";
 	public string Magnet { get; set; } = string.Empty;
 	public string Quality { get; set; } = string.Empty;
-	public bool Exists { get; set; } = true;
+	public bool Exist { get; set; } = true;
 	public string Path { get; set; } = string.Empty;
 
 
@@ -28,7 +28,7 @@ public class Movie
 			{ nameof(MovieName), EDataType.Text },
 			{ nameof(Magnet), EDataType.Text },
 			{ nameof(Quality), EDataType.Text },
-			{ nameof(Exists), EDataType.Boolean },
+			{ nameof(Exist), EDataType.Boolean },
 			{ nameof(Path), EDataType.Text }
 		},
 		nameof(MovieName)

@@ -18,7 +18,12 @@ public class Manager
 		_config = new(typeof(Manager));
 		_scheduler = new ();
 
+		SetBasicSchedule();
+		
 		new SqliteLogger().Info($"Manager Created");
+
+		//CleanTorrents();
+		ScanNewShows();
 	}
 
 	void SetBasicSchedule()
@@ -43,7 +48,6 @@ public class Manager
 	void ScanNewShows()
 	{
 		ShowScanner showScanner = new(_connectionString);
-
 		TransmissionManager tm = new(_connectionString, _config.GetField("TRANSMISSION_CONNECT"));
 
 		try

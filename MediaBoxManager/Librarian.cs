@@ -26,14 +26,14 @@ public class Librarian
 
 	public void UpdateLibrary()
 	{
-		MovieDB.UpdateColumnValueAsync("exist", 0).Wait();
+		MovieDB.UpdateColumnValueAsync(nameof(Movie.Exist), 0).Wait();
 		foreach (string movieLocation in movieLocations)
 		{
 			new SqliteLogger().Info($"Scanning Location: {movieLocation}");
 			UpdateMovieLibrary(movieLocation);
 		}
 
-		TvShowDB.UpdateColumnValueAsync("exist", 0).Wait();
+		TvShowDB.UpdateColumnValueAsync(nameof(TvShow.Exist), 0).Wait();
 		foreach (string tvShowLocation in tvShowLocations)
 		{
 			new SqliteLogger().Info($"Scanning Location: {tvShowLocation}");
@@ -43,11 +43,11 @@ public class Librarian
 
 	private void MarkMovie(Torrent torrent, string path = "Downloading...")
 	{
-		List<Movie> movies = MovieDB.GetByColumnAsync("movie", torrent.BaseName.Replace("'", "''")).Result;
+		List<Movie> movies = MovieDB.GetByColumnAsync(nameof(Movie.MovieName), torrent.BaseName.Replace("'", "''")).Result;
 		if (movies.Count > 0)
 		{
 			Movie movie = movies[0];
-			movie.Exists = true;
+			movie.Exist = true;
 			movie.Path = path;
 			MovieDB.UpdateAsync(movie).Wait();
 		}
@@ -59,7 +59,7 @@ public class Librarian
 				Magnet = torrent.Magnet!,
 				Quality = torrent.Quality,
 				Path = path,
-				Exists = true
+				Exist = true
 			}).Wait();
 			new SqliteLogger().Info($"Show Added to DB: {torrent.GetLogDetails}\t{path}");
 		}
@@ -68,14 +68,14 @@ public class Librarian
 	private void MarkTVShow(Torrent torrent, string path = "Downloading...")
 	{
 		List<TvShow> tvShows = TvShowDB.GetByColumnsAsync(new(){
-						{ "tv_show", torrent.BaseName.Replace("'", "''") },
-						{ "season", torrent.Season },
-						{ "episode", torrent.Episode }
+						{ nameof(TvShow.ShowName), torrent.BaseName.Replace("'", "''") },
+						{ nameof(TvShow.Season), torrent.Season },
+						{ nameof(TvShow.Episode), torrent.Episode }
 					}).Result;
 		if (tvShows.Count > 0)
 		{
 			TvShow tvShow = tvShows[0];
-			tvShow.Exists = true;
+			tvShow.Exist = true;
 			tvShow.Path = path;
 			TvShowDB.UpdateAsync(tvShow).Wait();
 		}
@@ -89,7 +89,7 @@ public class Librarian
 				Magnet = torrent.Magnet!,
 				Quality = torrent.Quality,
 				Path = path,
-				Exists = true
+				Exist = true
 			}).Wait();
 			new SqliteLogger().Info($"Show Added to DB: {torrent.GetLogDetails}\t{path}");
 		}

@@ -38,9 +38,9 @@ public class ShowScanner
 			}
 			catch (Exception e)
 			{
-				new SqliteLogger().Info($"Connection failed to {source.Key}: {e}");
+				new SqliteLogger().Error($"Connection failed to {source.Key}: {e}");
 			}
-			new SqliteLogger().Info($"Check Shows Ended for {source.Key}");
+			new SqliteLogger().Debug($"Check Shows Ended for {source.Key}");
 		}
 		new SqliteLogger().Info("TV Show Scan Completed");
 		return results;

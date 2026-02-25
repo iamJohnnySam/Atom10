@@ -15,7 +15,7 @@ public class AtomConfiguration
 	{
 		var builder = new ConfigurationBuilder()
 			.SetBasePath(AppContext.BaseDirectory)
-			.AddJsonFile("AppSettings.json", optional: true, reloadOnChange: true)
+			.AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
 			.AddUserSecrets(userSecretsType.Assembly)
 			.AddEnvironmentVariables();
 		config = builder.Build();

@@ -18,7 +18,7 @@ public class Magnet
 
 
 	public static TableMetadata Metadata => new(
-		typeof(Movie).Name,
+		typeof(Magnet).Name,
 		new Dictionary<string, EDataType>
 		{
 			{ nameof(MagnetId), EDataType.Key },
