@@ -11,6 +11,11 @@ builder.Services.AddSingleton<Manager>();
 
 var app = builder.Build();
 
+using (var scope = app.Services.CreateScope())
+{
+	var manager = scope.ServiceProvider.GetRequiredService<Manager>();
+}
+
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {

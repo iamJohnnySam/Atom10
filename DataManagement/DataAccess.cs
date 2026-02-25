@@ -17,7 +17,7 @@ public class DataAccess<T> : INotifyPropertyChanged where T : class
 
     private List<T> allItemsCache = [];
     private bool AllItemsInitialLoad = false;
-    public List<T> AllItems
+	public List<T> AllItems
     {
         get
         {

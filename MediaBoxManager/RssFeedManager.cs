@@ -14,16 +14,20 @@ public static class RssFeedManager
 {
 	internal static Dictionary<string, Show> GetShows(TvShowDataAccess TvShowDB, Dictionary<string, string> source)
 	{
+		SqliteLogger logger = new SqliteLogger();
 		Dictionary<string, Show> results = [];
 
 		IEnumerable<FeedEntry> feed = ParseFeed(source["feed"]);
+		logger.Debug($"Evaluating {feed.Count()} entries from {source["feed"]}.");
+
 		foreach (var entry in feed)
 		{
+			logger.Debug($"Evaluating {entry.Title}.");
 			(VideoType type, string baseName, (int season, int episode), string quality) = MediaTools.BreakdownVideoTitle(entry.Title);
 
 			if (type != VideoType.SHOW)
 			{
-				new SqliteLogger().Info($"{entry.Title} is not a TV show and is ignored.");
+				logger.Debug($"{entry.Title} is not a TV show and is ignored.");
 				continue;
 			}
 
@@ -36,7 +40,7 @@ public static class RssFeedManager
 			var taskCheckExist = TvShowDB.CombinationExistsAsync(dataToCheck);
 			bool showExists = taskCheckExist.Result;
 
-			new SqliteLogger().Info($"Found show {baseName} S{season:00}E{episode:00} -> Exists = {showExists}");
+			logger.Debug($"Found show {baseName} S{season:00}E{episode:00} -> Exists = {showExists}");
 
 			if (!showExists)
 			{
@@ -48,7 +52,7 @@ public static class RssFeedManager
 				}
 				if (season != 0 && season < lastDownloadedSeason)
 				{
-					new SqliteLogger().Info($"Skipping {baseName} S{season:00}E{episode:00} as a higher season ({lastDownloadedSeason}) exists.");
+					logger.Info($"Skipping {baseName} S{season:00}E{episode:00} as a higher season ({lastDownloadedSeason}) exists.");
 					continue;
 				}
 
@@ -65,7 +69,7 @@ public static class RssFeedManager
 							Magnet = entry.Link,
 							Quality = quality
 						};
-						new SqliteLogger().Info($"Updated Download: {baseName} S{season:00}E{episode:00}");
+						logger.Debug($"Updated Download: {baseName} S{season:00}E{episode:00}");
 					}
 				}
 				else
@@ -78,7 +82,7 @@ public static class RssFeedManager
 						Magnet = entry.Link,
 						Quality = quality
 					});
-					new SqliteLogger().Info($"Added Download: {baseName} S{season:00}E{episode:00}");
+					logger.Debug($"Added Download: {baseName} S{season:00}E{episode:00}");
 				}
 			}
 		}

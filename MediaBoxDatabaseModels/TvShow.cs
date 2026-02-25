@@ -19,7 +19,7 @@ public class TvShow
 	public int Episode { get; set; }
 	public string Magnet { get; set; } = string.Empty;
 	public string Quality { get; set; } = string.Empty;
-	public bool Exists { get; set; } = true;
+	public bool Exist { get; set; } = true;
 	public string Path { get; set; } = string.Empty;
 
 
@@ -35,7 +35,7 @@ public class TvShow
 			{ nameof(Episode), EDataType.Integer },
 			{ nameof(Magnet), EDataType.Text },
 			{ nameof(Quality), EDataType.Text },
-			{ nameof(Exists), EDataType.Boolean },
+			{ nameof(Exist), EDataType.Boolean },
 			{ nameof(Path), EDataType.Text }
 		},
 		nameof(ShowName)
