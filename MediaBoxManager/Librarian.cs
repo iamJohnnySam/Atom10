@@ -27,16 +27,22 @@ public class Librarian
 		this.tvShowLocations = tvShowLocations.Split(',').ToList();
 	}
 
-	public void UpdateLibrary()
+	public void UpdateLibrary(bool updateExistStatus = false)
 	{
-		MovieDB.UpdateColumnValueAsync(nameof(Movie.Exist), 0).Wait();
+		if (updateExistStatus)
+		{
+			MovieDB.UpdateColumnValueAsync(nameof(Movie.Exist), 0).Wait();
+		}
 		foreach (string movieLocation in movieLocations)
 		{
 			logger.Info($"Scanning Location: {movieLocation}");
 			UpdateMovieLibrary(movieLocation);
 		}
 
-		TvShowDB.UpdateColumnValueAsync(nameof(TvShow.Exist), 0).Wait();
+		if (updateExistStatus)
+		{
+			TvShowDB.UpdateColumnValueAsync(nameof(TvShow.Exist), 0).Wait();
+		}
 		foreach (string tvShowLocation in tvShowLocations)
 		{
 			logger.Info($"Scanning Location: {tvShowLocation}");
@@ -44,7 +50,7 @@ public class Librarian
 		}
 	}
 
-	private void MarkMovie(Torrent torrent, string path = "Downloading...")
+	private void MarkMovie(Torrent torrent, string path = "Downloading...", bool updateExistStatus = false)
 	{
 		List<Movie> movies = MovieDB.GetByColumnAsync(nameof(Movie.MovieName), torrent.BaseName.Replace("'", "''")).Result;
 		if (movies.Count > 0)
@@ -68,7 +74,7 @@ public class Librarian
 		}
 	}
 
-	private void MarkTVShow(Torrent torrent, string path = "Downloading...")
+	private void MarkTVShow(Torrent torrent, string path = "Downloading...", bool updateExistStatus = false)
 	{
 		List<TvShow> tvShows = TvShowDB.GetByColumnsAsync(new(){
 						{ nameof(TvShow.ShowName), torrent.BaseName.Replace("'", "''") },
@@ -77,10 +83,13 @@ public class Librarian
 					}).Result;
 		if (tvShows.Count > 0)
 		{
-			TvShow tvShow = tvShows[0];
-			tvShow.Exist = true;
-			tvShow.Path = path;
-			TvShowDB.UpdateAsync(tvShow).Wait();
+			if (updateExistStatus)
+			{
+				TvShow tvShow = tvShows[0];
+				tvShow.Exist = true;
+				tvShow.Path = path;
+				TvShowDB.UpdateAsync(tvShow).Wait();
+			}
 		}
 		else
 		{
@@ -117,7 +126,7 @@ public class Librarian
 		}
 	}
 
-	private void UpdateMovieLibrary(string movieLoc)
+	private void UpdateMovieLibrary(string movieLoc, bool updateExistStatus = false)
 	{
 		List<string> movieList = MediaTools.GetAllVideoFiles(movieLoc);
 		foreach (string movie in movieList)
@@ -126,12 +135,12 @@ public class Librarian
 
 			if (torrent.FileType == FileType.VIDEO)
 			{
-				MarkMovie(torrent, movie.Replace(movieLoc, ""));
+				MarkMovie(torrent, movie.Replace(movieLoc, ""), updateExistStatus);
 			}
 		}
 	}
 
-	private void UpdateTVShowLibrary(string tvShowLoc)
+	private void UpdateTVShowLibrary(string tvShowLoc, bool updateExistStatus = false)
 	{
 		List<string> tvShowList = MediaTools.GetAllVideoFiles(tvShowLoc);
 		foreach (string tvShow in tvShowList)
@@ -140,7 +149,7 @@ public class Librarian
 
 			if (torrent.FileType == FileType.VIDEO)
 			{
-				MarkTVShow(torrent, tvShow.Replace(tvShowLoc, ""));
+				MarkTVShow(torrent, tvShow.Replace(tvShowLoc, ""), updateExistStatus);
 			}
 
 		}
