@@ -1,5 +1,6 @@
 ﻿using FlowModels.Command;
 using FlowModels.Enum;
+using Logger;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -302,7 +303,7 @@ public class Station : INotifyPropertyChanged
         {
             CheckAccessibility(reservation);
             Cassette!.AddPayload(reservation);
-            Log.Instance.Info(new LogMessage(tID, $"Reservation {reservation.Id} sent to Cassette"));
+            TransactionLogger.Instance.Info(new TransactionLog(tID, $"Reservation {reservation.Id} sent to Cassette"));
         }
     }
 
@@ -323,7 +324,7 @@ public class Station : INotifyPropertyChanged
             if (AutoMode && Processable && IsFullAndReadyToProcess)
             {
                 Process(tID);
-                Log.Instance.Info(new LogMessage(tID, $"Station {StationId} started Auto Processing"));
+                TransactionLogger.Instance.Info(new TransactionLog(tID, $"Station {StationId} started Auto Processing"));
             }
         }
 
@@ -352,7 +353,7 @@ public class Station : INotifyPropertyChanged
                 thread.Join();
             }
         }
-        Log.Instance.Info(new LogMessage(tID, $"Station {StationId} All closable doors closed."));
+        TransactionLogger.Instance.Info(new TransactionLog(tID, $"Station {StationId} All closable doors closed."));
     }
     private void OpenAllDoors(string tID)
     {
@@ -377,7 +378,7 @@ public class Station : INotifyPropertyChanged
                 thread.Join();
             }
         }
-        Log.Instance.Info(new LogMessage(tID, $"Station {StationId} All openable doors opened."));
+        TransactionLogger.Instance.Info(new TransactionLog(tID, $"Station {StationId} All openable doors opened."));
     }
     private void MoveCassetteToSlot(string tID, List<Reservation> reservations)
     {
@@ -408,7 +409,7 @@ public class Station : INotifyPropertyChanged
         if (processName == null)
         {
             processName = Cassette.PayloadStateOfWafersInSlots ?? throw new ErrorResponse(ErrorCode.MissingArguments, $"Process name not provided and Cassette in Station {StationId} does not have Payload State set.");
-            Log.Instance.Info(new LogMessage(tID, $"Station {StationId} inferred Process {processName} from Cassette Payload State"));
+            TransactionLogger.Instance.Info(new TransactionLog(tID, $"Station {StationId} inferred Process {processName} from Cassette Payload State"));
         }
         if (!Processes.ContainsKey(processName))
             throw new ErrorResponse(ErrorCode.ProcessNotAvailable, $"Process {processName} is not available at Station {StationId}");
@@ -421,9 +422,9 @@ public class Station : INotifyPropertyChanged
         }
 
         State = StationState.Processing;
-        Log.Instance.Info(new LogMessage(tID, $"Station {StationId} started Process {processName}"));
+        TransactionLogger.Instance.Info(new TransactionLog(tID, $"Station {StationId} started Process {processName}"));
         InternalClock.Instance.ProcessWait(Processes[processName].ProcessTime);
-        Log.Instance.Info(new LogMessage(tID, $"Station {StationId} completed Process {processName}"));
+        TransactionLogger.Instance.Info(new TransactionLog(tID, $"Station {StationId} completed Process {processName}"));
 
         if (AutoMode)
         {

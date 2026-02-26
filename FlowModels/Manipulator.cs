@@ -1,8 +1,12 @@
-﻿using System;
+﻿using FlowModels.Command;
+using FlowModels.Enum;
+using Logger;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Text;
+using Utilities;
 
 namespace FlowModels;
 
@@ -18,8 +22,8 @@ public class Manipulator : INotifyPropertyChanged
 
 
     // OTHER PARAMS
-    private EManipulatorState state = EManipulatorState.Off;
-    public EManipulatorState State
+    private ManipulatorState state = ManipulatorState.Off;
+    public ManipulatorState State
     {
         get { return state; }
         set { state = value; OnPropertyChanged(); }
@@ -36,59 +40,59 @@ public class Manipulator : INotifyPropertyChanged
     public Manipulator()
     {
         if (Locations is null || Locations.Count == 0)
-            throw new ErrorResponse(EErrorCode.MissingArguments, $"No Locations for Manipulator {ManipulatorId}");
+            throw new ErrorResponse(ErrorCode.MissingArguments, $"No Locations for Manipulator {ManipulatorId}");
         currentLocation = Locations[0];
     }
 
     private void CheckBusy()
     {
-        if (State != EManipulatorState.Idle)
-            throw new ErrorResponse(EErrorCode.ActionWhileBusy, $"Manipulator {ManipulatorId} is busy.");
+        if (State != ManipulatorState.Idle)
+            throw new ErrorResponse(ErrorCode.ActionWhileBusy, $"Manipulator {ManipulatorId} is busy.");
 
         foreach (KeyValuePair<int, EndEffector> EE in EndEffectors)
         {
-            if (EE.Value.ArmState != EManipulatorArmState.retracted)
-                throw new ErrorResponse(EErrorCode.UnknownArmState, $"Manipulator {ManipulatorId} has Arm {EE.Key} Extended while idle.");
+            if (EE.Value.ArmState != ManipulatorArmState.retracted)
+                throw new ErrorResponse(ErrorCode.UnknownArmState, $"Manipulator {ManipulatorId} has Arm {EE.Key} Extended while idle.");
         }
     }
     private void CheckTransferCompatibility(int endEffectorId, List<Reservation> reservations)
     {
         if (!EndEffectors.ContainsKey(endEffectorId))
-            throw new ErrorResponse(EErrorCode.EndEffectorOutOfBounds, $"Manipulator {ManipulatorId} does not contain end effector {endEffectorId}");
+            throw new ErrorResponse(ErrorCode.EndEffectorOutOfBounds, $"Manipulator {ManipulatorId} does not contain end effector {endEffectorId}");
 
         if (reservations.Count == 0)
-            throw new ErrorResponse(EErrorCode.InvalidReservation, "No Reservations provided");
+            throw new ErrorResponse(ErrorCode.InvalidReservation, "No Reservations provided");
 
         if (reservations.Count > EndEffectors[endEffectorId].PayloadSlots)
-            throw new ErrorResponse(EErrorCode.InvalidReservation, $"Too many Reservations provided for Manipulator {ManipulatorId} End Effector {endEffectorId}");
+            throw new ErrorResponse(ErrorCode.InvalidReservation, $"Too many Reservations provided for Manipulator {ManipulatorId} End Effector {endEffectorId}");
 
         if (reservations.Count != EndEffectors[endEffectorId].PayloadSlots)
-            Log.Instance.Info(new LogMessage("", $"Manipulator {ManipulatorId} End Effector {endEffectorId} received {reservations.Count} Reservations but has {EndEffectors[endEffectorId].PayloadSlots} Payload Slots"));
+            TransactionLogger.Instance.Info(new TransactionLog("", $"Manipulator {ManipulatorId} End Effector {endEffectorId} received {reservations.Count} Reservations but has {EndEffectors[endEffectorId].PayloadSlots} Payload Slots"));
 
         if (reservations.Any(r => r.TargetStation == null))
-            throw new ErrorResponse(EErrorCode.ProgramError, "One or more Reservations have no Target Station set");
+            throw new ErrorResponse(ErrorCode.ProgramError, "One or more Reservations have no Target Station set");
 
         foreach (Reservation reservation in reservations)
         {
             if (reservation.TargetStation == null)
-                throw new ErrorResponse(EErrorCode.ProgramError, "Target Station is not set");
+                throw new ErrorResponse(ErrorCode.ProgramError, "Target Station is not set");
         }
 
         string expectedPayloadId = reservations.FirstOrDefault()!.Payload.PayloadID;
         string expectedTargetStationId = reservations.FirstOrDefault()!.TargetStation!.StationId;
-        EReservationType expectedReservationType = reservations.FirstOrDefault()!.Type;
+        ReservationType expectedReservationType = reservations.FirstOrDefault()!.Type;
 
         foreach (Reservation reservation in reservations)
         {
             if ((expectedPayloadId != reservation.Payload.PayloadID) || (expectedTargetStationId != reservation.TargetStation!.StationId) || (expectedReservationType != reservation.Type))
-                throw new ErrorResponse(EErrorCode.InvalidReservation, $"Reservations did not match");
+                throw new ErrorResponse(ErrorCode.InvalidReservation, $"Reservations did not match");
         }
 
         if (!Locations.Intersect(reservations.FirstOrDefault()!.TargetStation!.Locations.Keys).Any())
-            throw new ErrorResponse(EErrorCode.StationNotReachable, $"Manipulator {ManipulatorId} could not access any locations.");
+            throw new ErrorResponse(ErrorCode.StationNotReachable, $"Manipulator {ManipulatorId} could not access any locations.");
 
         if (EndEffectors[endEffectorId].PayloadType != reservations.FirstOrDefault()!.PayloadType)
-            throw new ErrorResponse(EErrorCode.PayloadTypeMismatch, $"Manipulator {ManipulatorId} End Effector did not match the payload type for this station.");
+            throw new ErrorResponse(ErrorCode.PayloadTypeMismatch, $"Manipulator {ManipulatorId} End Effector did not match the payload type for this station.");
     }
 
 
@@ -96,64 +100,64 @@ public class Manipulator : INotifyPropertyChanged
     {
         if (CurrentLocationStationId != stationId)
         {
-            State = EManipulatorState.Moving;
+            State = ManipulatorState.Moving;
             InternalClock.Instance.ProcessWait(MotionTime);
             CurrentLocationStationId = stationId;
-            Log.Instance.Info(new LogMessage(tID, $"Manipulator {ManipulatorId} Moved to Station {stationId}"));
+            TransactionLogger.Instance.Info(new TransactionLog(tID, $"Manipulator {ManipulatorId} Moved to Station {stationId}"));
         }
     }
     private void ExtendArm(string tID, int endEffectorId)
     {
         if (!EndEffectors.ContainsKey(endEffectorId))
-            throw new ErrorResponse(EErrorCode.EndEffectorOutOfBounds, $"End Effector {endEffectorId} is not valid");
+            throw new ErrorResponse(ErrorCode.EndEffectorOutOfBounds, $"End Effector {endEffectorId} is not valid");
 
-        if (EndEffectors[endEffectorId].ArmState == EManipulatorArmState.extended)
-            throw new ErrorResponse(EErrorCode.IncorrectState, $"End Effector {endEffectorId} was already extended");
+        if (EndEffectors[endEffectorId].ArmState == ManipulatorArmState.extended)
+            throw new ErrorResponse(ErrorCode.IncorrectState, $"End Effector {endEffectorId} was already extended");
 
-        State = EManipulatorState.Extending;
+        State = ManipulatorState.Extending;
         InternalClock.Instance.ProcessWait(ExtendTime);
-        EndEffectors[endEffectorId].ArmState = EManipulatorArmState.extended;
+        EndEffectors[endEffectorId].ArmState = ManipulatorArmState.extended;
     }
     private void RetractArm(string tID, int endEffectorId)
     {
         if (!EndEffectors.ContainsKey(endEffectorId))
-            throw new ErrorResponse(EErrorCode.EndEffectorOutOfBounds, $"End Effector {endEffectorId} is not valid");
+            throw new ErrorResponse(ErrorCode.EndEffectorOutOfBounds, $"End Effector {endEffectorId} is not valid");
 
-        if (EndEffectors[endEffectorId].ArmState == EManipulatorArmState.retracted)
-            throw new ErrorResponse(EErrorCode.IncorrectState, $"End Effector {endEffectorId} was already retracted");
+        if (EndEffectors[endEffectorId].ArmState == ManipulatorArmState.retracted)
+            throw new ErrorResponse(ErrorCode.IncorrectState, $"End Effector {endEffectorId} was already retracted");
 
-        State = EManipulatorState.Retracting;
+        State = ManipulatorState.Retracting;
         InternalClock.Instance.ProcessWait(RetractTime);
-        EndEffectors[endEffectorId].ArmState = EManipulatorArmState.retracted;
+        EndEffectors[endEffectorId].ArmState = ManipulatorArmState.retracted;
     }
 
     public void Home(string tID)
     {
         CheckBusy();
-        Log.Instance.Info(new LogMessage(tID, $"Manipulator {ManipulatorId} Homing"));
+        TransactionLogger.Instance.Info(new TransactionLog(tID, $"Manipulator {ManipulatorId} Homing"));
         GoToStation(tID, "home");
-        State = EManipulatorState.Idle;
-        Log.Instance.Info(new LogMessage(tID, $"Manipulator {ManipulatorId} at Home"));
+        State = ManipulatorState.Idle;
+        TransactionLogger.Instance.Info(new TransactionLog(tID, $"Manipulator {ManipulatorId} at Home"));
     }
     public void PowerOff(string tID)
     {
         CheckBusy();
-        State = EManipulatorState.Off;
-        Log.Instance.Info(new LogMessage(tID, $"Manipulator {ManipulatorId} Off."));
+        State = ManipulatorState.Off;
+        TransactionLogger.Instance.Info(new TransactionLog(tID, $"Manipulator {ManipulatorId} Off."));
     }
     public void PowerOn(string tID)
     {
-        if (State != EManipulatorState.Off && State != EManipulatorState.Idle)
-            throw new ErrorResponse(EErrorCode.IncorrectState, "Invalid State");
-        State = EManipulatorState.Idle;
-        Log.Instance.Info(new LogMessage(tID, $"Manipulator {ManipulatorId} On"));
+        if (State != ManipulatorState.Off && State != ManipulatorState.Idle)
+            throw new ErrorResponse(ErrorCode.IncorrectState, "Invalid State");
+        State = ManipulatorState.Idle;
+        TransactionLogger.Instance.Info(new TransactionLog(tID, $"Manipulator {ManipulatorId} On"));
     }
     public void Pick(string tID, int endEffectorId, List<Reservation> reservations)
     {
         CheckBusy();
         CheckTransferCompatibility(endEffectorId, reservations);
-        if (reservations.FirstOrDefault()!.Type != EReservationType.pickFromStation)
-            throw new ErrorResponse(EErrorCode.InvalidReservation, $"Manipulator {ManipulatorId} Pick did not receieve a pick reservation");
+        if (reservations.FirstOrDefault()!.Type != ReservationType.pickFromStation)
+            throw new ErrorResponse(ErrorCode.InvalidReservation, $"Manipulator {ManipulatorId} Pick did not receieve a pick reservation");
 
 
         PickOrPlace(tID, endEffectorId, reservations);
@@ -162,8 +166,8 @@ public class Manipulator : INotifyPropertyChanged
     {
         CheckBusy();
         CheckTransferCompatibility(endEffectorId, reservations);
-        if (reservations.FirstOrDefault()!.Type != EReservationType.placeInStation)
-            throw new ErrorResponse(EErrorCode.InvalidReservation, $"Manipulator {ManipulatorId} Place did not receieve a place reservation");
+        if (reservations.FirstOrDefault()!.Type != ReservationType.placeInStation)
+            throw new ErrorResponse(ErrorCode.InvalidReservation, $"Manipulator {ManipulatorId} Place did not receieve a place reservation");
 
 
         PickOrPlace(tID, endEffectorId, reservations);
@@ -171,10 +175,10 @@ public class Manipulator : INotifyPropertyChanged
 
     private void PickOrPlace(string tID, int endEffectorId, List<Reservation> reservations)
     {
-        State = EManipulatorState.Moving;
+        State = ManipulatorState.Moving;
         GoToStation(tID, reservations.FirstOrDefault()!.TargetStation!.StationId);
 
-        State = EManipulatorState.Extending;
+        State = ManipulatorState.Extending;
 
         HashSet<string> commonElements = new(Locations);
         commonElements.IntersectWith(reservations.FirstOrDefault()!.TargetStation!.Locations.Keys);
@@ -183,7 +187,7 @@ public class Manipulator : INotifyPropertyChanged
         reservations.FirstOrDefault()!.TargetStation!.StartAccess(tID, reservations);
         ExtendArm(tID, endEffectorId);
 
-        if (reservations.First()!.Type == EReservationType.pickFromStation)
+        if (reservations.First()!.Type == ReservationType.pickFromStation)
         {
             EndEffectors[endEffectorId].Payloads = reservations.First()!.TargetStation!.PickFromStation(tID, reservations);
         }
@@ -193,11 +197,11 @@ public class Manipulator : INotifyPropertyChanged
             EndEffectors[endEffectorId].Payloads = [];
         }
 
-        State = EManipulatorState.Retracting;
+        State = ManipulatorState.Retracting;
         RetractArm(tID, endEffectorId);
 
         reservations.First()!.TargetStation!.StopAccess(tID, reservations);
-        State = EManipulatorState.Idle;
+        State = ManipulatorState.Idle;
     }
 
 

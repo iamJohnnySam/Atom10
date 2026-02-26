@@ -1,4 +1,6 @@
-﻿using System;
+﻿using FlowModels.Command;
+using FlowModels.Enum;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
@@ -39,7 +41,7 @@ public class Slot(int slot) : INotifyPropertyChanged
     public void BlockSlot(Reservation reservation)
     {
         if (IsBlocked)
-            throw new ErrorResponse(EErrorCode.SlotBlocked, $"Slot {SlotId} is blocked.");
+            throw new ErrorResponse(ErrorCode.SlotBlocked, $"Slot {SlotId} is blocked.");
 
         BlockedByReservationId = reservation.Id;
     }
@@ -50,16 +52,16 @@ public class Slot(int slot) : INotifyPropertyChanged
     private void AddPayloadInterlock(Reservation? reservation)
     {
         if (IsOccupied)
-            throw new ErrorResponse(EErrorCode.PayloadAlreadyAvailable, $"Payload already in slot {SlotId}.");
+            throw new ErrorResponse(ErrorCode.PayloadAlreadyAvailable, $"Payload already in slot {SlotId}.");
 
         ReservationInterlock(reservation);
     }
     private void RemovePayloadInterlock(Reservation? reservation)
     {
         if (!IsOccupied)
-            throw new ErrorResponse(EErrorCode.PayloadNotAvailable, $"Slot {SlotId} has no payload.");
+            throw new ErrorResponse(ErrorCode.PayloadNotAvailable, $"Slot {SlotId} has no payload.");
         if (Payload == null)
-            throw new ErrorResponse(EErrorCode.SlotsEmpty, "No payload to remove.");
+            throw new ErrorResponse(ErrorCode.SlotsEmpty, "No payload to remove.");
 
 
         ReservationInterlock(reservation);
@@ -69,17 +71,17 @@ public class Slot(int slot) : INotifyPropertyChanged
         if (IsBlocked)
         {
             if (reservation == null)
-                throw new ErrorResponse(EErrorCode.SlotBlocked, $"Slot {SlotId} is blocked.");
+                throw new ErrorResponse(ErrorCode.SlotBlocked, $"Slot {SlotId} is blocked.");
 
             else if (reservation.Id != BlockedByReservationId)
-                throw new ErrorResponse(EErrorCode.SlotBlocked, $"Slot {SlotId} is blocked by a different reservation");
+                throw new ErrorResponse(ErrorCode.SlotBlocked, $"Slot {SlotId} is blocked by a different reservation");
         }
     }
 
 
-    public Reservation SetReservation(EReservationType reservationType, Payload? payload = null)
+    public Reservation SetReservation(ReservationType reservationType, Payload? payload = null)
     {
-        if (reservationType == EReservationType.pickFromStation)
+        if (reservationType == ReservationType.pickFromStation)
         {
             RemovePayloadInterlock(null);
             if (payload == null)
@@ -87,19 +89,19 @@ public class Slot(int slot) : INotifyPropertyChanged
                 if (Payload != null)
                     payload = Payload;
                 else
-                    throw new ErrorResponse(EErrorCode.ProgramError, "Expected Payload not found in slot");
+                    throw new ErrorResponse(ErrorCode.ProgramError, "Expected Payload not found in slot");
             }
         }
         else
         {
             AddPayloadInterlock(null);
             if (payload == null)
-                throw new ErrorResponse(EErrorCode.PayloadNotAvailable, "No Payload found to reserve");
+                throw new ErrorResponse(ErrorCode.PayloadNotAvailable, "No Payload found to reserve");
         }
 
         Reservation reservation = new()
         {
-            Type = EReservationType.pickFromStation,
+            Type = ReservationType.pickFromStation,
             Payload = payload,
             Slot = this
         };
@@ -116,14 +118,14 @@ public class Slot(int slot) : INotifyPropertyChanged
             }
             else
             {
-                throw new ErrorResponse(EErrorCode.SlotBlocked, $"Slot {SlotId} is blocked by a different reservation");
+                throw new ErrorResponse(ErrorCode.SlotBlocked, $"Slot {SlotId} is blocked by a different reservation");
             }
         }
         else
         {
             if (BlockedByReservationId != 0)
             {
-                throw new ErrorResponse(EErrorCode.SlotBlocked, $"Slot {SlotId} is blocked. Need reservation to unblock.");
+                throw new ErrorResponse(ErrorCode.SlotBlocked, $"Slot {SlotId} is blocked. Need reservation to unblock.");
             }
         }
     }
@@ -139,7 +141,7 @@ public class Slot(int slot) : INotifyPropertyChanged
     {
         RemovePayloadInterlock(reservation);
         if (Payload == null)
-            throw new ErrorResponse(EErrorCode.ProgramError, "Expected Payload not found");
+            throw new ErrorResponse(ErrorCode.ProgramError, "Expected Payload not found");
 
         var temp = Payload;
         Payload = null;

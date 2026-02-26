@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Logger;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
@@ -8,7 +9,7 @@ namespace FlowModels;
 
 public class Payload : INotifyPropertyChanged
 {
-    public event EventHandler<LogMessage>? OnLogEvent;
+    public event EventHandler<TransactionLog>? OnLogEvent;
     public event EventHandler<string>? OnStateChanged;
 
     public required string PayloadID { get; set; }
@@ -24,7 +25,7 @@ public class Payload : INotifyPropertyChanged
         set
         {
             currentStationId = value;
-            OnLogEvent?.Invoke(this, new LogMessage($"Payload {PayloadID} current station has been updated to {value}"));
+            OnLogEvent?.Invoke(this, new TransactionLog($"Payload {PayloadID} current station has been updated to {value}"));
             OnPropertyChanged();
         }
     }
@@ -36,7 +37,7 @@ public class Payload : INotifyPropertyChanged
         set
         {
             currentSlotId = value;
-            OnLogEvent?.Invoke(this, new LogMessage($"Payload {PayloadID} current slot has been updated to {value}"));
+            OnLogEvent?.Invoke(this, new TransactionLog($"Payload {PayloadID} current slot has been updated to {value}"));
             OnPropertyChanged();
         }
     }
@@ -48,7 +49,7 @@ public class Payload : INotifyPropertyChanged
         set
         {
             payloadErrorStaus = value;
-            OnLogEvent?.Invoke(this, new LogMessage($"Payload {PayloadID} error state updated to {value}"));
+            OnLogEvent?.Invoke(this, new TransactionLog($"Payload {PayloadID} error state updated to {value}"));
             OnPropertyChanged();
         }
     }
@@ -60,7 +61,7 @@ public class Payload : INotifyPropertyChanged
         set
         {
             payloadState = value;
-            OnLogEvent?.Invoke(this, new LogMessage($"Payload {PayloadID} state updated to {value}"));
+            OnLogEvent?.Invoke(this, new TransactionLog($"Payload {PayloadID} state updated to {value}"));
             OnStateChanged?.Invoke(this, payloadState);
             OnPropertyChanged();
         }

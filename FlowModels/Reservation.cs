@@ -1,13 +1,15 @@
-﻿using System;
+﻿using FlowModels.Enum;
+using System;
 using System.Collections.Generic;
 using System.Text;
+using Utilities;
 using static System.Collections.Specialized.BitVector32;
 
 namespace FlowModels;
 
 public class Reservation
 {
-    public required EReservationType Type { get; set; }
+    public required ReservationType Type { get; set; }
     public int Id { get; set; } = GenerateId.Instance.GetReservationId();
     public Station? TargetStation { get; set; }
     public required Slot Slot { get; set; }

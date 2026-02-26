@@ -1,4 +1,5 @@
-﻿using System;
+﻿using FlowModels.Enum;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
@@ -12,8 +13,8 @@ public class EndEffector : INotifyPropertyChanged
     public required uint PayloadSlots { get; set; }
     public List<Payload> Payloads { get; set; } = [];
 
-    private EManipulatorArmState armState = EManipulatorArmState.retracted;
-    public EManipulatorArmState ArmState
+    private ManipulatorArmState armState = ManipulatorArmState.retracted;
+    public ManipulatorArmState ArmState
     {
         get { return armState; }
         set { armState = value; OnPropertyChanged(); }
