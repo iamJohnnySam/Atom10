@@ -58,8 +58,16 @@ public class DataAccess<T> : INotifyPropertyChanged where T : class
 
     public virtual async Task ReloadCachedData()
     {
-        await GetAllAsync();
-    }
+        if (allItemsCache.Count > 0)
+        {
+            logger.Debug($"Reloading cached data for 'AllItems' of {typeof(T).Name}...");
+            await GetAllAsync();
+        }
+        else
+        {
+			logger.Debug($"Cache {typeof(T).Name} reload ignored since cache was never accessed.");
+		}
+	}
 
     public virtual async Task InsertAsync(T entity)
     {
@@ -219,8 +227,8 @@ public class DataAccess<T> : INotifyPropertyChanged where T : class
         await connection.OpenAsync();
         await connection.ExecuteAsync(SqliteFactory.BuildUpdate(Metadata), entity);
 
-        AsyncHelper.RunInBackground(ReloadCachedData);
-        logger.Debug(message: $"Updated {typeof(T).Name} entity.", interaction: "SQLite");
+        allItemsCache = [];
+		logger.Debug(message: $"Updated {typeof(T).Name} entity.", interaction: "SQLite");
     }
     public virtual async Task DeleteAsync(T id)
     {
@@ -228,8 +236,8 @@ public class DataAccess<T> : INotifyPropertyChanged where T : class
         await connection.OpenAsync();
         await connection.ExecuteAsync(SqliteFactory.BuildDelete(Metadata), id);
 
-        AsyncHelper.RunInBackground(ReloadCachedData);
-        logger.Debug(message: $"Deleted {typeof(T).Name} entity.", interaction: "SQLite");
+		allItemsCache = [];
+		logger.Debug(message: $"Deleted {typeof(T).Name} entity.", interaction: "SQLite");
     }
     public async Task<List<T>> QueryAsync(string sql, object? parameters = null)
     {
@@ -253,8 +261,8 @@ public class DataAccess<T> : INotifyPropertyChanged where T : class
         await connection.OpenAsync();
         await connection.ExecuteAsync(sql, parameters);
         if (updateCache)
-            AsyncHelper.RunInBackground(ReloadCachedData);
-        logger.Debug(message: $"Executed ExecuteAsync with SQL: {sql}", interaction: "SQLite");
+			allItemsCache = [];
+		logger.Debug(message: $"Executed ExecuteAsync with SQL: {sql}", interaction: "SQLite");
     }
 
     protected void OnPropertyChanged([CallerMemberName] string? name = null)

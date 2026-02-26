@@ -102,10 +102,11 @@ public static class RssFeedManager
 		}
 		catch
 		{
+			new SqliteLogger().Error("Error reading {feedUrl}");
 			throw new MissingFieldException($"Error reading {feedUrl}");
 		}
 
-		new SqliteLogger().Info($"Successfully extracted feed {feedUrl}");
+		new SqliteLogger().Debug($"Successfully extracted feed {feedUrl}");
 
 		return doc.Descendants("item").Select(item => new FeedEntry
 		{

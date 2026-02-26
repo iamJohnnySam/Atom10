@@ -13,6 +13,8 @@ public class Librarian
 	MovieDataAccess MovieDB;
 	TvShowDataAccess TvShowDB;
 
+	private readonly SqliteLogger logger;
+
 	private readonly List<string> movieLocations;
 	private readonly List<string> tvShowLocations;
 
@@ -20,6 +22,7 @@ public class Librarian
 	{
 		MovieDB = movieDataAccess;
 		TvShowDB = tvShowDataAccess;
+		logger = new SqliteLogger();
 		this.movieLocations = movieLocations.Split(',').ToList();
 		this.tvShowLocations = tvShowLocations.Split(',').ToList();
 	}
@@ -29,14 +32,14 @@ public class Librarian
 		MovieDB.UpdateColumnValueAsync(nameof(Movie.Exist), 0).Wait();
 		foreach (string movieLocation in movieLocations)
 		{
-			new SqliteLogger().Info($"Scanning Location: {movieLocation}");
+			logger.Info($"Scanning Location: {movieLocation}");
 			UpdateMovieLibrary(movieLocation);
 		}
 
 		TvShowDB.UpdateColumnValueAsync(nameof(TvShow.Exist), 0).Wait();
 		foreach (string tvShowLocation in tvShowLocations)
 		{
-			new SqliteLogger().Info($"Scanning Location: {tvShowLocation}");
+			logger.Info($"Scanning Location: {tvShowLocation}");
 			UpdateTVShowLibrary(tvShowLocation);
 		}
 	}
@@ -61,7 +64,7 @@ public class Librarian
 				Path = path,
 				Exist = true
 			}).Wait();
-			new SqliteLogger().Info($"Show Added to DB: {torrent.GetLogDetails}\t{path}");
+			logger.Debug($"Show Added to DB: {torrent.GetLogDetails}\t{path}");
 		}
 	}
 
@@ -91,7 +94,7 @@ public class Librarian
 				Path = path,
 				Exist = true
 			}).Wait();
-			new SqliteLogger().Info($"Show Added to DB: {torrent.GetLogDetails}\t{path}");
+			logger.Debug($"Show Added to DB: {torrent.GetLogDetails}\t{path}");
 		}
 	}
 
