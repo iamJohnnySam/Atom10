@@ -16,6 +16,7 @@ public static class RssFeedManager
 	{
 		SqliteLogger logger = new SqliteLogger();
 		Dictionary<string, Show> results = [];
+		logger.Debug($"Attempting data extraction from {source["feed"]}.");
 
 		IEnumerable<FeedEntry> feed = ParseFeed(source["feed"]);
 		logger.Debug($"Evaluating {feed.Count()} entries from {source["feed"]}.");
@@ -32,9 +33,9 @@ public static class RssFeedManager
 			}
 
 			Dictionary<string, object> dataToCheck = new(){
-					{ "tv_show", baseName },
-					{ "season", season },
-					{ "episode", episode }
+					{ nameof(TvShow.ShowName), baseName },
+					{ nameof(TvShow.Season), season },
+					{ nameof(TvShow.Episode), episode }
 				};
 
 			var taskCheckExist = TvShowDB.CombinationExistsAsync(dataToCheck);
@@ -44,7 +45,7 @@ public static class RssFeedManager
 
 			if (!showExists)
 			{
-				List<TvShow> lastSeasonTable = TvShowDB.CustomSelectAsync($"tv_show = '{baseName}'", "season DESC", 1).Result;
+				List<TvShow> lastSeasonTable = TvShowDB.CustomSelectAsync($"{nameof(TvShow.ShowName)} = '{baseName}'", $"{nameof(TvShow.Season)} DESC", 1).Result;
 				int lastDownloadedSeason = 0;
 				if (lastSeasonTable.Count > 0)
 				{

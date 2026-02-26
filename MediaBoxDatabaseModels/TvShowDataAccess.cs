@@ -10,7 +10,7 @@ public class TvShowDataAccess (string connectionString) : DataAccess<TvShow>(con
 {
 	public async Task<List<TvShow>> CustomSelectAsync(string condition = "1=1", string? orderBy = null, int? limit = null)
 	{
-		var query = $"SELECT * FROM TvShow WHERE {condition}";
+		var query = $"SELECT * FROM {nameof(TvShow)} WHERE {condition}";
 
 		if (!string.IsNullOrEmpty(orderBy))
 		{
@@ -33,7 +33,7 @@ public class TvShowDataAccess (string connectionString) : DataAccess<TvShow>(con
 		}
 
 		var conditions = string.Join(" AND ", columnValuePairs.Keys.Select(key => $"{key} = @{key}"));
-		var query = $"SELECT 1 FROM TvShow WHERE {conditions} LIMIT 1;";
+		var query = $"SELECT 1 FROM {nameof(TvShow)} WHERE {conditions} LIMIT 1;";
 
 		var result = await QueryFirstOrDefaultAsync(query, columnValuePairs);
 		return result != null;
@@ -41,7 +41,7 @@ public class TvShowDataAccess (string connectionString) : DataAccess<TvShow>(con
 
 	public async Task UpdateColumnValueAsync(string columnName, object newValue)
 	{
-		var query = $"UPDATE TvShow SET {columnName} = @NewValue;";
+		var query = $"UPDATE {nameof(TvShow)} SET {columnName} = @NewValue;";
 		var parameters = new Dictionary<string, object>
 			{
 				{ "@NewValue", newValue }

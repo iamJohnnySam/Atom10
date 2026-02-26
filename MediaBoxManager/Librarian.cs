@@ -16,10 +16,10 @@ public class Librarian
 	private readonly List<string> movieLocations;
 	private readonly List<string> tvShowLocations;
 
-	public Librarian(string connectionString, string movieLocations, string tvShowLocations)
+	public Librarian(MovieDataAccess movieDataAccess, TvShowDataAccess tvShowDataAccess, string movieLocations, string tvShowLocations)
 	{
-		MovieDB = new(connectionString);
-		TvShowDB = new(connectionString);
+		MovieDB = movieDataAccess;
+		TvShowDB = tvShowDataAccess;
 		this.movieLocations = movieLocations.Split(',').ToList();
 		this.tvShowLocations = tvShowLocations.Split(',').ToList();
 	}

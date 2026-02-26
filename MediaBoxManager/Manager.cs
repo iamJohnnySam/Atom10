@@ -22,7 +22,7 @@ public class Manager
 		
 		new SqliteLogger().Info($"Manager Created");
 
-		//CleanTorrents();
+		CleanTorrents();
 		ScanNewShows();
 	}
 
@@ -47,8 +47,11 @@ public class Manager
 
 	void ScanNewShows()
 	{
-		ShowScanner showScanner = new(_connectionString);
-		TransmissionManager tm = new(_connectionString, _config.GetField("TRANSMISSION_CONNECT"));
+		TvShowDataAccess tvShowDataAccess = new(_connectionString);
+		MagnetDataAccess magnetDataAccess = new(_connectionString);
+
+		ShowScanner showScanner = new(tvShowDataAccess);
+		TransmissionManager tm = new(magnetDataAccess, _config.GetField("TRANSMISSION_CONNECT"));
 
 		try
 		{
@@ -79,7 +82,8 @@ public class Manager
 
 	void CleanTorrents()
 	{
-		TransmissionManager tm = new(_connectionString, _config.GetField("TRANSMISSION_CONNECT"));
+		MagnetDataAccess magnetDataAccess = new(_connectionString);
+		TransmissionManager tm = new(magnetDataAccess, _config.GetField("TRANSMISSION_CONNECT"));
 
 
 		MediaHandler mediaHandler = new(_config.GetField("MEDIA_DOWNLOADS"), _config.GetField("MEDIA_MOVIES"), _config.GetField("MEDIA_SHOWS"), _config.GetField("MEDIA_UNKNOWN"));
@@ -91,13 +95,17 @@ public class Manager
 
 	void UpdateLibrary()
 	{
-		Librarian libraryUpdater = new(_connectionString, _config.GetField("MEDIA_MOVIES"), _config.GetField("MEDIA_SHOWS"));
+		TvShowDataAccess tvShowDataAccess = new(_connectionString);
+		MovieDataAccess movieDataAccess = new(_connectionString);
+		Librarian libraryUpdater = new(movieDataAccess, tvShowDataAccess, _config.GetField("MEDIA_MOVIES"), _config.GetField("MEDIA_SHOWS"));
 
 		libraryUpdater.UpdateLibrary();
 	}
 	void UpdateLibraryWithTorrents(List<TorrentInfo> torrents)
 	{
-		Librarian libraryUpdater = new(_connectionString, _config.GetField("MEDIA_MOVIES"), _config.GetField("MEDIA_SHOWS"));
+		TvShowDataAccess tvShowDataAccess = new(_connectionString);
+		MovieDataAccess movieDataAccess = new(_connectionString);
+		Librarian libraryUpdater = new(movieDataAccess, tvShowDataAccess, _config.GetField("MEDIA_MOVIES"), _config.GetField("MEDIA_SHOWS"));
 
 		libraryUpdater.UpdateLibrary();
 		libraryUpdater.UpdateTorrents(torrents);

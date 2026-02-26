@@ -15,9 +15,9 @@ public class ShowScanner
 
 	private readonly Dictionary<string, Dictionary<string, string>> _sources;
 
-	public ShowScanner(string connectionString)
+	public ShowScanner(TvShowDataAccess tvShowDataAccess)
 	{
-		TvShowDB = new(connectionString);
+		TvShowDB = tvShowDataAccess;
 
 		string jsonContent = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "sources.json"));
 		_sources = JsonSerializer.Deserialize<Dictionary<string, Dictionary<string, string>>>(jsonContent) ?? throw new Exception("Error getting RSS feed sources");

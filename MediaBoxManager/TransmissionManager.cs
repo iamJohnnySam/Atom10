@@ -15,9 +15,9 @@ public class TransmissionManager
 	private readonly Client _client;
 	private readonly string url;
 
-	public TransmissionManager(string connectionString, string url, string username = "", string password = "")
+	public TransmissionManager(MagnetDataAccess magnetDataAccess, string url, string username = "", string password = "")
 	{
-		MagnetDB = new(connectionString);
+		MagnetDB = magnetDataAccess;
 		_client = new(url, username, password);
 		this.url = url;
 	}
@@ -25,7 +25,7 @@ public class TransmissionManager
 	public async Task<bool> CheckIfExists(string name, string magnetLink)
 	{
 		string showName = name.Replace("'", "''");
-		List<Magnet> results = await (MagnetDB.GetByColumnAsync("name", showName));
+		List<Magnet> results = await (MagnetDB.GetByColumnAsync(nameof(Magnet.MagnetName), showName));
 		if (results.Count == 0)
 		{
 			return false;
