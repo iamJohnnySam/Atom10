@@ -11,6 +11,7 @@ public class Manager
 	private readonly string _connectionString;
 	private readonly Scheduler _scheduler;
 	private readonly AtomConfiguration _config;
+	private readonly SqliteLogger logger;
 
 	public Manager()
 	{
@@ -20,9 +21,11 @@ public class Manager
 
 		SetBasicSchedule();
 		
-		new SqliteLogger().Info($"Manager Created");
+		logger = new SqliteLogger();
+		logger.Debug($"Manager Created");
 
 		CleanTorrents();
+		logger.Debug($"Cleaning Completed...");
 		ScanNewShows();
 	}
 
@@ -62,21 +65,21 @@ public class Manager
 				{
 					if (tm.CheckIfExists($"{tv_shows[show].BaseName} {tv_shows[show].Season}x{tv_shows[show].Episode}", tv_shows[show].Magnet).Result)
 					{
-						new SqliteLogger().Info($"The torrent {tv_shows[show].BaseName} was previously added. Now skipped.");
+						logger.Info($"The torrent {tv_shows[show].BaseName} was previously added. Now skipped.");
 						continue;
 					}
 					(int tmID, string tmName) = tm.AddTorrent(tv_shows[show].Magnet, $"{tv_shows[show].BaseName} {tv_shows[show].Season}x{tv_shows[show].Episode}");
-					new SqliteLogger().Info($"{tv_shows[show].BaseName} {tv_shows[show].Season}x{tv_shows[show].Episode} added: {tmID}.");
+					logger.Info($"{tv_shows[show].BaseName} {tv_shows[show].Season}x{tv_shows[show].Episode} added: {tmID}.");
 				}
 				catch (Exception ex)
 				{
-					new SqliteLogger().Info(ex.Message);
+					logger.Error(ex.Message);
 				}
 			}
 		}
 		catch (Exception ex)
 		{
-			new SqliteLogger().Info(ex.Message);
+			logger.Error(ex.Message);
 		}
 	}
 

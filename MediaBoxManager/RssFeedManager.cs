@@ -7,6 +7,7 @@ using System.Data;
 using System.Text;
 using System.Text.Json;
 using System.Xml.Linq;
+using Utilities;
 
 namespace MediaBoxManager;
 
@@ -92,28 +93,37 @@ public static class RssFeedManager
 
 	private static List<FeedEntry> ParseFeed(string feedUrl)
 	{
-		using var client = new HttpClient();
-		XDocument doc;
-
-		try
+		new SqliteLogger().Debug($"Parsing feed {feedUrl}...");
+		if (WebTools.CheckUrlExists(feedUrl))
 		{
-			var response = client.GetStringAsync(feedUrl).Result;
-			doc = XDocument.Parse(response);
+			new SqliteLogger().Debug($"Feed {feedUrl} active...");
+			using var client = new HttpClient();
+			XDocument doc;
+
+			try
+			{
+				new SqliteLogger().Debug($"Extracting feed {feedUrl}...");
+				var response = client.GetStringAsync(feedUrl).Result;
+				new SqliteLogger().Debug($"Extracted feed {feedUrl}. Starting to parse...");
+				doc = XDocument.Parse(response);
+			}
+			catch
+			{
+				new SqliteLogger().Error("Error reading {feedUrl}");
+				throw new MissingFieldException($"Error reading {feedUrl}");
+			}
+
+			new SqliteLogger().Debug($"Successfully extracted feed {feedUrl}");
+
+			return doc.Descendants("item").Select(item => new FeedEntry
+			{
+				Title = item.Element("title")?.Value ?? string.Empty,
+				Link = item.Element("link")?.Value ?? string.Empty,
+				TvShowName = item.Element("tv_show_name")?.Value,
+				TvEpisodeId = item.Element("tv_episode_id")?.Value
+			}).ToList();
 		}
-		catch
-		{
-			new SqliteLogger().Error("Error reading {feedUrl}");
-			throw new MissingFieldException($"Error reading {feedUrl}");
-		}
-
-		new SqliteLogger().Debug($"Successfully extracted feed {feedUrl}");
-
-		return doc.Descendants("item").Select(item => new FeedEntry
-		{
-			Title = item.Element("title")?.Value ?? string.Empty,
-			Link = item.Element("link")?.Value ?? string.Empty,
-			TvShowName = item.Element("tv_show_name")?.Value,
-			TvEpisodeId = item.Element("tv_episode_id")?.Value
-		}).ToList();
+		new SqliteLogger().Error($"Could not reach {feedUrl}");
+		return [];
 	}
 }

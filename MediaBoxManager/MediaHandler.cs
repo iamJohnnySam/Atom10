@@ -13,6 +13,7 @@ public class MediaHandler
 	public string PathMovies { get; set; }
 	public string PathShows { get; set; }
 	public string PathUnknown { get; set; }
+	private readonly SqliteLogger logger;
 
 
 	readonly FileTools FileManager;
@@ -25,6 +26,7 @@ public class MediaHandler
 		PathUnknown = pathUnknown;
 
 		FileManager = new FileTools();
+		logger = new SqliteLogger();
 	}
 
 	public bool CheckDownloadsAvaialble()
@@ -34,12 +36,12 @@ public class MediaHandler
 
 		if (files.Length == 0 && directories.Length == 0)
 		{
-			new SqliteLogger().Info("Nothing to refactor");
+			logger.Info("Nothing to refactor");
 			return false;
 		}
-		new SqliteLogger().Info($"Found {files.Length} Files and {directories.Length} Directories in {PathDownload}");
-		new SqliteLogger().Info($"Files -> {String.Join(",", files)}");
-		new SqliteLogger().Info($"Directories -> {String.Join(",", directories)}");
+		logger.Debug($"Found {files.Length} Files and {directories.Length} Directories in {PathDownload}");
+		logger.Debug($"Files -> {String.Join(",", files)}");
+		logger.Debug($"Directories -> {String.Join(",", directories)}");
 		return true;
 	}
 
@@ -47,26 +49,26 @@ public class MediaHandler
 	{
 		if (!CheckDownloadsAvaialble())
 		{
-			new SqliteLogger().Info("No New Downloads");
+			logger.Info("No New Downloads");
 		}
 		string sendString = "New Additions:";
 
-		new SqliteLogger().Info("Sorting external files.");
+		logger.Debug("Sorting external files.");
 		string[] files = Directory.GetFiles(PathDownload);
 		string[] directories = Directory.GetDirectories(PathDownload);
 
 		sendString += SortTorrentFiles(files, directories);
 
-		new SqliteLogger().Info("Sorting Folders");
+		logger.Debug("Sorting Folders");
 		foreach (string directory in directories)
 		{
 			string[] files1 = Directory.GetFiles(directory);
 			string[] directories1 = Directory.GetDirectories(directory);
-			new SqliteLogger().Info($"Found {files1.Length} files and {directories1.Length} directories in {directory}");
+			logger.Debug($"Found {files1.Length} files and {directories1.Length} directories in {directory}");
 			sendString += SortTorrentFiles(files1, directories1);
 			DeleteSubDirectoriesIfEmpty(directory);
 		}
-		new SqliteLogger().Info(sendString);
+		logger.Debug(sendString);
 	}
 
 	private void DeleteSubDirectoriesIfEmpty(string startLocation)
@@ -82,7 +84,7 @@ public class MediaHandler
 				}
 				catch (DirectoryNotFoundException)
 				{
-					new SqliteLogger().Info($"Delete failed: {directory}");
+					logger.Error($"Delete failed: {directory}");
 				}
 			}
 			if (Directory.GetFiles(startLocation).Length == 0 && Directory.GetDirectories(startLocation).Length == 0)
@@ -113,14 +115,14 @@ public class MediaHandler
 
 		if (availableBaseNames.Count == 1)
 		{
-			new SqliteLogger().Info($"Group of videos in directory belongs to {lastBaseName}.");
+			logger.Debug($"Group of videos in directory belongs to {lastBaseName}.");
 			return (true, lastValidVideoType, lastBaseName);
 		}
 		else if (availableBaseNames.Count == 0)
 		{
 			// todo:
 		}
-		new SqliteLogger().Info($"Group of videos in directory are mixed. -> {String.Join(",", availableBaseNames)}");
+		logger.Debug($"Group of videos in directory are mixed. -> {String.Join(",", availableBaseNames)}");
 		return (false, VideoType.OTHER, lastBaseName);
 	}
 
@@ -134,23 +136,23 @@ public class MediaHandler
 		{
 			foreach (string fileName in files)
 			{
-				new SqliteLogger().Info($"Sorting file {fileName} in base {SameBaseName}.");
+				logger.Debug($"Sorting file {fileName} in base {SameBaseName}.");
 				Torrent torrent = MediaTools.BreakdownTorrentFileName(fileName);
 				refactoredFiles += MoveFile(torrent.FileType, sameVideoType, SameBaseName, fileName);
 			}
 			foreach (string directory in directories)
 			{
-				new SqliteLogger().Info($"Sorting folder {directory}");
+				logger.Debug($"Sorting folder {directory}");
 				string[] files1 = Directory.GetFiles(directory);
 				string[] directories1 = Directory.GetDirectories(directory);
 
 				if (directory.Contains("Subs"))
 				{
-					new SqliteLogger().Info($"Moving subs folder of {SameBaseName}.");
+					logger.Debug($"Moving subs folder of {SameBaseName}.");
 					MoveSubsFolder(directory, sameVideoType, SameBaseName);
 				}
 
-				new SqliteLogger().Info($"Found {files1.Length} files and {directories1.Length} directories in {directory}");
+				logger.Debug($"Found {files1.Length} files and {directories1.Length} directories in {directory}");
 
 				refactoredFiles += SortTorrentFiles(files1, directories1);
 			}
@@ -159,7 +161,7 @@ public class MediaHandler
 		{
 			foreach (string fileName in files)
 			{
-				new SqliteLogger().Info($"Sorting file {fileName}.");
+				logger.Debug($"Sorting file {fileName}.");
 				Torrent torrent = MediaTools.BreakdownTorrentFileName(fileName);
 				refactoredFiles += MoveFile(torrent.FileType, torrent.VideoType, torrent.BaseName, fileName);
 			}
@@ -169,7 +171,7 @@ public class MediaHandler
 
 	private string MoveFile(FileType fileType, VideoType destinationFolder, string baseName, string fileName)
 	{
-		new SqliteLogger().Info($"Preparing to move File, {fileName}.");
+		logger.Debug($"Preparing to move File, {fileName}.");
 
 		string refactoredFiles = string.Empty;
 		string newLocation;
@@ -210,14 +212,14 @@ public class MediaHandler
 			}
 			File.Move(fileName, newDesitnation);
 		}
-		new SqliteLogger().Info($"Moved '{fileName}' -> '{newDesitnation}'");
+		logger.Info($"Moved '{fileName}' -> '{newDesitnation}'");
 		return refactoredFiles;
 	}
 
 	private void MoveSubsFolder(string subsFolder, VideoType destinationFolder, string baseName)
 	{
 		string[] subFiles = Directory.GetFiles(subsFolder);
-		new SqliteLogger().Info($"Found {subFiles.Length} Subtitle Files for {baseName}.");
+		logger.Debug($"Found {subFiles.Length} Subtitle Files for {baseName}.");
 
 		string? destination = null;
 
@@ -236,12 +238,12 @@ public class MediaHandler
 		{
 			foreach (var file in subFiles)
 			{
-				new SqliteLogger().Info($"Found Sub File {file}");
+				logger.Debug($"Found Sub File {file}");
 				var filePath = Path.Combine(subsFolder, file);
 				var destinationPath = Path.Combine(destination, file);
 
 				File.Move(filePath, destinationPath);
-				new SqliteLogger().Info($"Moved {filePath} -> {destinationPath}");
+				logger.Info($"Moved {filePath} -> {destinationPath}");
 			}
 		}
 		DeleteSubDirectoriesIfEmpty(subsFolder);
