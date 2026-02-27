@@ -1,6 +1,7 @@
 <Solution>
   <Project Path="BlazorUtilities/BlazorUtilities.csproj" Id="5fbdf88b-ba41-4427-a9d6-a14d96118b27" />
   <Project Path="DataManagement/DataManagement.csproj" Id="d5b8e9e8-91a4-4ba3-a650-2eaba1123e23" />
+  <Project Path="FlowConsole/FlowConsole.csproj" Id="8482a7ba-f7d8-4f9f-bb27-3ee5ac18bdbf" />
   <Project Path="FlowDatabaseManager/FlowDatabaseManager.csproj" Id="79ce689f-b705-4603-8590-a38211829b5c" />
   <Project Path="FlowModels/FlowModels.csproj" />
   <Project Path="Logger/Logger.csproj" Id="9e45c60b-5862-48b2-9276-b0ca76297639" />

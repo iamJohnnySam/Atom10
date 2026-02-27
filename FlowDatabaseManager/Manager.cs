@@ -4,6 +4,6 @@ using System.Text;
 
 namespace FlowDatabaseManager;
 
-internal class Manager
+public class Manager
 {
 }
