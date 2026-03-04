@@ -2,65 +2,90 @@
 @attribute [Authorize]
 @inject Manager manager
 @inject IJSRuntime JS
+@inject SqliteLogger Logger
 @rendermode InteractiveServer
+@implements IDisposable
 
 <PageTitle>nexus | Specification</PageTitle>
 <div style="padding: 10px 20px 10px 30px;">
     <h3>Specification Manager</h3>
 
+    @if (_errorMessage != null)
+    {
+        <div class="alert alert-danger" role="alert">
+            @_errorMessage
+            <button type="button" class="btn-close" @onclick="() => _errorMessage = null"></button>
+        </div>
+    }
+
     <div class="row">
         <div class="col scrollable-area-tall">
             <div class="mb-4 mt-4">
-                <table class="table table-bordered table-hover">
-                    <thead class="table-dark">
-                        <tr>
-                            <th>ID</th>
-                            <th>Product Module</th>
-                            <th>Name</th>
-                            <th>Description</th>
-                            <th>Rank</th>
-
-                            <th>Configuration Options</th>
-                            <th>Default</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var spec in manager.SpecificationDB.AllItems)
-                        {
-                            <tr class="@((SelectedSpecification?.SpecificationId == spec.SpecificationId) ? "table-primary" : "")">
-                                <td style="color: white">@spec.SpecificationId</td>
-                                <td style="color: white">@spec.ProductModule?.ModuleName</td>
-                                <td style="color: white">@spec.SpecificationName</td>
-                                <td style="color: white">@spec.SpecificationDescription</td>
-                                <td style="color: white">
-                                    @if(spec.Rank == 0)
-                                    {
-                                        <span style="color:red;">@spec.Rank</span>
-                                    }
-                                    else
-                                    {
-                                        @spec.Rank
-                                    }
-                                </td>
-
-                                <td style="color: white">@spec.ConfigurationOptions</td>
-                                <td style="color: white">@spec.DefaultOption</td>
-                                <td>
-                                    <button class="btn btn-sm btn-outline-primary me-2" @onclick="() => Edit(spec)">Edit</button>
-                                    <button class="btn btn-sm btn-outline-danger" @onclick="() => Delete(spec)">Delete</button>
-                                </td>
+                @if (!_initialized)
+                {
+                    <div class="spinner-border" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                }
+                else
+                {
+                    <table class="table table-bordered table-hover">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>ID</th>
+                                <th>Product Module</th>
+                                <th>Name</th>
+                                <th>Description</th>
+                                <th>Rank</th>
+                                <th>Configuration Options</th>
+                                <th>Default</th>
+                                <th>Actions</th>
                             </tr>
-                        }
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            @foreach (var spec in manager.SpecificationDB.AllItems)
+                            {
+                                <tr class="@((SelectedSpecification?.SpecificationId == spec.SpecificationId) ? "table-primary" : "")">
+                                    <td style="color: white">@spec.SpecificationId</td>
+                                    <td style="color: white">@spec.ProductModule?.ModuleName</td>
+                                    <td style="color: white">@spec.SpecificationName</td>
+                                    <td style="color: white">@spec.SpecificationDescription</td>
+                                    <td style="color: white">
+                                        @if (spec.Rank == 0)
+                                        {
+                                            <span style="color:red;">@spec.Rank</span>
+                                        }
+                                        else
+                                        {
+                                            @spec.Rank
+                                        }
+                                    </td>
+                                    <td style="color: white">@spec.ConfigurationOptions</td>
+                                    <td style="color: white">@spec.DefaultOption</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-primary me-2" 
+                                                @onclick="() => Edit(spec)"
+                                                disabled="@_isProcessing">
+                                            Edit
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-danger" 
+                                                @onclick="() => DeleteAsync(spec)"
+                                                disabled="@_isProcessing">
+                                            Delete
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
             </div>
         </div>
         <div class="col-4">
             <div class="card p-3" style="background-color: transparent;">
                 <h5>@(SelectedSpecification?.SpecificationId == 0 ? "Add New Specification" : "Edit Specification")</h5>
 
-                <EditForm Model="@SelectedSpecification" OnValidSubmit="HandleSubmit">
+                <EditForm Model="@SelectedSpecification" OnValidSubmit="HandleSubmitAsync">
                     <DataAnnotationsValidator />
                     <ValidationSummary />
 
@@ -103,8 +128,12 @@
                     </div>
 
                     <div class="d-flex gap-2">
-                        <button type="submit" class="btn btn-success">Save</button>
-                        <button type="button" class="btn btn-secondary" @onclick="ResetForm">Cancel</button>
+                        <button type="submit" class="btn btn-success" disabled="@_isProcessing">
+                            @(_isProcessing ? "Saving..." : "Save")
+                        </button>
+                        <button type="button" class="btn btn-secondary" @onclick="ResetForm" disabled="@_isProcessing">
+                            Cancel
+                        </button>
                     </div>
                 </EditForm>
             </div>
@@ -115,10 +144,7 @@
                     <li>1: Substrate Related Information</li>
                     <li>10: Performance Information</li>
                     <li>30: Location Information</li>
-                    <li></li>
                     <li>50: Optional Items</li>
-                    <li></li>
-                    <li></li>
                     <li>100: Paint Codes and Surface Finishing</li>
                     <li>200: Maintenance</li>
                     <li>500: Customer Approvals</li>
@@ -126,30 +152,46 @@
             </div>
         </div>
     </div>
-
-    
-
-    
 </div>
 
 @code {
-    int LastSelectedProductModuleId = 0;
+    private bool _initialized = false;
+    private bool _isProcessing = false;
+    private string? _errorMessage = null;
+    private int LastSelectedProductModuleId = 0;
 
     private Specification SelectedSpecification = new()
     {
         SpecificationName = string.Empty
     };
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
-        manager.SpecificationDB.PropertyChanged += (_, __) => InvokeAsync(StateHasChanged);
-        manager.ProductModuleDB.PropertyChanged += (_, __) => InvokeAsync(StateHasChanged);
+        try
+        {
+            await manager.EnsureInitializedAsync();
+            
+            manager.SpecificationDB.PropertyChanged += OnDataChanged;
+            manager.ProductModuleDB.PropertyChanged += OnDataChanged;
+            
+            _initialized = true;
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to load specifications: {ex.Message}";
+            Logger.Error($"SpecificationManager initialization error: {ex.Message}");
+        }
+    }
+
+    private void OnDataChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        InvokeAsync(StateHasChanged);
     }
 
     public void Dispose()
     {
-        manager.SpecificationDB.PropertyChanged -= (_, __) => InvokeAsync(StateHasChanged);
-        manager.ProductModuleDB.PropertyChanged -= (_, __) => InvokeAsync(StateHasChanged);
+        manager.SpecificationDB.PropertyChanged -= OnDataChanged;
+        manager.ProductModuleDB.PropertyChanged -= OnDataChanged;
     }
 
     private void Edit(Specification spec)
@@ -157,47 +199,85 @@
         SelectedSpecification = new Specification
         {
             SpecificationId = spec.SpecificationId,
+            ProductModuleId = spec.ProductModuleId,
             SpecificationName = spec.SpecificationName,
             SpecificationDescription = spec.SpecificationDescription,
-            ProductModuleId = spec.ProductModuleId,
+            Rank = spec.Rank,
             ConfigurationOptions = spec.ConfigurationOptions,
-            DefaultOption = spec.DefaultOption,
-            Rank = spec.Rank
+            DefaultOption = spec.DefaultOption
         };
+        LastSelectedProductModuleId = spec.ProductModuleId;
     }
 
-    private async Task Delete(Specification spec)
+    private async Task DeleteAsync(Specification spec)
     {
-        var confirmed = await JS.InvokeAsync<bool>("confirm", "Are you sure you want to delete this specification?");
-        if (!confirmed) return;
+        if (_isProcessing) return;
 
-        await manager.SpecificationDB.DeleteAsync(spec);
-        ResetForm();
+        try
+        {
+            var confirmed = await JS.InvokeAsync<bool>("confirm", $"Are you sure you want to delete '{spec.SpecificationName}'?");
+            if (!confirmed) return;
+
+            _isProcessing = true;
+            StateHasChanged();
+
+            await manager.SpecificationDB.DeleteAsync(spec);
+            Logger.Info($"Deleted specification: {spec.SpecificationName}");
+            
+            ResetForm();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to delete specification: {ex.Message}";
+            Logger.Error($"Delete specification error: {ex.Message}");
+        }
+        finally
+        {
+            _isProcessing = false;
+            StateHasChanged();
+        }
     }
 
-    private async Task HandleSubmit()
+    private async Task HandleSubmitAsync()
     {
-        if (SelectedSpecification.SpecificationId == 0)
-        {
-            await manager.SpecificationDB.InsertAsync(SelectedSpecification);
-        }
-        else
-        {
-            await manager.SpecificationDB.UpdateAsync(SelectedSpecification);
-        }
-        LastSelectedProductModuleId = SelectedSpecification.ProductModuleId;
+        if (_isProcessing) return;
 
-        ResetForm();
+        try
+        {
+            _isProcessing = true;
+            StateHasChanged();
+
+            if (SelectedSpecification.SpecificationId == 0)
+            {
+                await manager.SpecificationDB.InsertAsync(SelectedSpecification);
+                Logger.Info($"Created new specification: {SelectedSpecification.SpecificationName}");
+            }
+            else
+            {
+                await manager.SpecificationDB.UpdateAsync(SelectedSpecification);
+                Logger.Info($"Updated specification: {SelectedSpecification.SpecificationName}");
+            }
+
+            ResetForm();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to save specification: {ex.Message}";
+            Logger.Error($"Save specification error: {ex.Message}");
+        }
+        finally
+        {
+            _isProcessing = false;
+            StateHasChanged();
+        }
     }
 
     private void ResetForm()
     {
         SelectedSpecification = new Specification
         {
-            ProductModuleId = LastSelectedProductModuleId,
             SpecificationName = string.Empty,
-            SpecificationDescription = string.Empty,
-            ConfigurationOptions = string.Empty
+            ProductModuleId = LastSelectedProductModuleId
         };
     }
 }

@@ -16,7 +16,7 @@ public class SpecificationDataAccess(string connectionString) : DataAccess<Speci
         {
             item.ProductModule = await ProductModuleDB.GetByIdAsync(item.ProductModuleId);
         }
-        AllItems = [.. AllItems.OrderBy(rank => rank.ProductModule!.Rank).ThenBy(rank => rank.ProductModule!.ModuleId).ThenBy(rank => rank.Rank)];
+        UpdateAllItems([.. AllItems.OrderBy(rank => rank.ProductModule!.Rank).ThenBy(rank => rank.ProductModule!.ModuleId).ThenBy(rank => rank.Rank)]);
     }
 
     public override async Task<Specification?> GetByIdAsync(int id)

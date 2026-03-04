@@ -12,9 +12,9 @@ namespace FlowModels;
 public class Cassette : INotifyPropertyChanged
 {
     // REQUIRED PARAMETERS
-    public required int Capacity { get; set; }
-    public required string PayloadType { get; set; }
-    public required bool IsMovableCassette { get; set; }
+    public int Capacity { get; set; }
+    public string PayloadType { get; set; }
+    public bool IsMovableCassette { get; set; }
     public uint SlotMoveTime { get; set; }
 
     // OTHER PARAMETERS
@@ -96,8 +96,12 @@ public class Cassette : INotifyPropertyChanged
     }
 
 
-    public Cassette()
+    public Cassette(int capacity, string payloadType, bool isMovableCassette)
     {
+        Capacity = capacity;
+        PayloadType = payloadType;
+        IsMovableCassette = isMovableCassette;
+
         if (Capacity < 1)
             throw new ErrorResponse(ErrorCode.ProgramError, $"Cassette cannot have capacity less than 1.");
 

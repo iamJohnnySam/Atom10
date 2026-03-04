@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace NexusDatabaseManager;
 
@@ -40,30 +41,26 @@ public class Manager
     public SupplierDataAccess SupplierDB { get; }
     public TaskItemDataAccess TaskItemDB { get; }
 
+    private readonly SemaphoreSlim _initLock = new SemaphoreSlim(1, 1);
+    private bool _initialized = false;
+
     public Manager()
     {
         SqliteConnection = new SqliteConnectionString("NexusDB");
         _connectionString = SqliteConnection.ConnectionString;
 
-		// Employee
-		DesignationDB = new(_connectionString);
+        // Employee
+        DesignationDB = new(_connectionString);
         GradeDB = new(_connectionString);
         EmployeeDB = new(_connectionString);
         LoginDB = new(_connectionString);
 
         CustomerDB = new(_connectionString);
         ProductDB = new(_connectionString);
-
         ProjectDB = new(_connectionString);
 
-        try
-        {
-            _ = ProjectDB.GetByIdAsync(1).Result;
-        }
-        catch (AggregateException)
-        {
-            InitializeDatabase();
-        }
+        // Trigger async initialization - don't block constructor
+        _ = EnsureInitializedAsync();
 
         ProductModuleDB = new(_connectionString);
         ConfigurationDB = new(_connectionString);
@@ -86,13 +83,50 @@ public class Manager
         new SqliteLogger().Info($"Manager Created");
     }
 
-    private void InitializeDatabase()
+    public async Task EnsureInitializedAsync()
+    {
+        if (_initialized) return;
+
+        await _initLock.WaitAsync();
+        try
+        {
+            if (_initialized) return;
+
+            var project = await ProjectDB.GetByIdAsync(1);
+            if (project == null)
+            {
+                await InitializeDatabaseAsync();
+            }
+            _initialized = true;
+        }
+        catch (Exception ex)
+        {
+            new SqliteLogger().Error($"Failed to initialize database: {ex.Message}");
+            // Try to initialize on error
+            try
+            {
+                await InitializeDatabaseAsync();
+                _initialized = true;
+            }
+            catch (Exception innerEx)
+            {
+                new SqliteLogger().Error($"Failed to initialize database on retry: {innerEx.Message}");
+                throw;
+            }
+        }
+        finally
+        {
+            _initLock.Release();
+        }
+    }
+
+    private async Task InitializeDatabaseAsync()
     {
         Customer newCustomer = new() { CustomerName = "Internal" };
-        CustomerDB.InsertAsync(newCustomer).Wait();
+        await CustomerDB.InsertAsync(newCustomer);
 
         Product newProduct = new() { ProductName = "None" };
-        ProductDB.InsertAsync(newProduct).Wait();
+        await ProductDB.InsertAsync(newProduct);
 
         Project newProject = new()
         {
@@ -103,6 +137,6 @@ public class Manager
             POStatus = SalesStatus.Concept,
             ProductId = newProduct.ProductId,
         };
-        ProjectDB.InsertAsync(newProject).Wait();
+        await ProjectDB.InsertAsync(newProject);
     }
 }

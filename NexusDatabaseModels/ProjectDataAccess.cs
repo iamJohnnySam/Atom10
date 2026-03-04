@@ -72,12 +72,12 @@ public class ProjectDataAccess(string connectionString) : DataAccess<Project>(co
             await GetProjectObjects(project);
         }
 
-        AllItems = AllItems.OrderByDescending(p => p.IsTrackedProject)
+        UpdateAllItems(AllItems.OrderByDescending(p => p.IsTrackedProject)
                            .ThenByDescending(p => p.IsActive)
                            .ThenByDescending(p => p.Priority)
                            .ThenByDescending(p => p.ProjectCode)
                            .ThenBy(p => p.DesignCode)
-                           .ToList();
+                           .ToList());
     }
     public async Task<List<Project>> GetAllActiveAsync()
     {

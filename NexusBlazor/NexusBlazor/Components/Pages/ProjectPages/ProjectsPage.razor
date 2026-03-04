@@ -3,9 +3,11 @@
 @inject Manager manager
 @inject LoginInformation LoginInfo
 @inject IJSRuntime JS
+@inject SqliteLogger Logger
 @rendermode InteractiveServer
+@implements IDisposable
 
-<PageTitle>nexus | @LoginInfo.CurrentProject.ProjectName</PageTitle>
+<PageTitle>nexus | @(LoginInfo.CurrentProject?.ProjectName ?? "Projects")</PageTitle>
 
 <div class="row" style="padding: 20px 30px 20px 30px;">
     <div class="col">
@@ -27,75 +29,115 @@
 
 <div class="row" style="padding: 20px 30px 20px 30px;">
     <div class="col-8 scrollable-area">
-        
-        <table class="table table-bordered table-hover">
-            <thead class="table-dark">
-                <tr>
-                    <th>Project Name</th>
-                    <th>Customer</th>
-                    <th>Product</th>
-                    <th>Design Code</th>
-                    <th>Project Code</th>
-                    <th>Part Number</th>
-                    <th>Priority</th>
-                    <th>PO Status</th>
-                    <th>Active</th>
-                    <th>Tracked</th>
-                    <th>Designer</th>
-                    <th>Documents</th>
-                    <th colspan="2">Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var project in manager.ProjectDB.AllItems)
-                {
-                    <tr class="@((LoginInfo.CurrentProject.ProjectId == project.ProjectId) ? "table-primary" : "")">
-                        <td style="color: white">@project.ProjectName</td>
-                        <td style="color: white">@project.Customer?.CustomerName</td>
-                        <td style="color: white">@project.Product?.ProductName</td>
-                        <td style="color: white">@project.DesignCode</td>
-                        <td style="color: white">@project.ProjectCode</td>
-                        <td style="color: white">@project.PartNumber</td>
-                        <td style="color: white">@project.Priority.ToString()</td>
-                        <td style="color: white">@project.POStatus.ToString()</td>
-                        <td style="color: white">@(project.IsActive ? "✓" : "✗")</td>
-                        <td style="color: white">@(project.IsTrackedProject ? "✓" : "✗")</td>
-                        <td style="color: white">@project.PrimaryDesigner?.EmployeeShortName</td>
-                        <td style="color: white">
-                            @if (project.RequirementDocumentLink != string.Empty)
-                            {
-                                <a href = "@project.RequirementDocumentLink" > Link </a>
-                            }
-                        </td>
-                        <td>
-                            <button class="btn btn-sm btn-outline-primary me-2" @onclick="() => HandleProjectSelection(project)">Select</button>
-                            @if(project.ProjectId != 1)
-                            {
-                                <button class="btn btn-sm btn-outline-danger" @onclick="() => Delete(project)">Delete</button>
-                            }
-                        </td>
+        @if (!_initialized)
+        {
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        }
+        else
+        {
+            <table class="table table-bordered table-hover">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Project Name</th>
+                        <th>Customer</th>
+                        <th>Product</th>
+                        <th>Design Code</th>
+                        <th>Project Code</th>
+                        <th>Part Number</th>
+                        <th>Priority</th>
+                        <th>PO Status</th>
+                        <th>Active</th>
+                        <th>Tracked</th>
+                        <th>Designer</th>
+                        <th>Documents</th>
+                        <th colspan="2">Actions</th>
                     </tr>
-                }
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    @foreach (var project in manager.ProjectDB.AllItems)
+                    {
+                        <tr class="@((LoginInfo.CurrentProject?.ProjectId == project.ProjectId) ? "table-primary" : "")">
+                            <td style="color: white">@project.ProjectName</td>
+                            <td style="color: white">@project.Customer?.CustomerName</td>
+                            <td style="color: white">@project.Product?.ProductName</td>
+                            <td style="color: white">@project.DesignCode</td>
+                            <td style="color: white">@project.ProjectCode</td>
+                            <td style="color: white">@project.PartNumber</td>
+                            <td style="color: white">@project.Priority.ToString()</td>
+                            <td style="color: white">@project.POStatus.ToString()</td>
+                            <td style="color: white">@(project.IsActive ? "✓" : "✗")</td>
+                            <td style="color: white">@(project.IsTrackedProject ? "✓" : "✗")</td>
+                            <td style="color: white">@project.PrimaryDesigner?.EmployeeShortName</td>
+                            <td style="color: white">
+                                @if (!string.IsNullOrEmpty(project.RequirementDocumentLink))
+                                {
+                                    <a href="@project.RequirementDocumentLink" target="_blank">Link</a>
+                                }
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-primary me-2" 
+                                        @onclick="() => HandleProjectSelection(project)"
+                                        disabled="@_isProcessing">
+                                    Select
+                                </button>
+                                @if (project.ProjectId != 1)
+                                {
+                                    <button class="btn btn-sm btn-outline-danger" 
+                                            @onclick="() => DeleteAsync(project)"
+                                            disabled="@_isProcessing">
+                                        Delete
+                                    </button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
     </div>
     <div class="col">
-        <ProjectEdit SelectedProject="@LoginInfo.CurrentProject" />
+        @if (LoginInfo.CurrentProject != null)
+        {
+            <ProjectEdit SelectedProject="@LoginInfo.CurrentProject" />
+        }
     </div>
 </div>
 
 @code {
+    private bool _initialized = false;
+    private bool _isProcessing = false;
+    private string? _errorMessage = null;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
-        manager.ProjectDB.PropertyChanged += (_, __) => InvokeAsync(StateHasChanged);
-        LoginInfo.PropertyChanged += (_, __) => InvokeAsync(StateHasChanged);
+        try
+        {
+            await manager.EnsureInitializedAsync();
+            await LoginInfo.LoadDefaultProjectAsync();
+            
+            manager.ProjectDB.PropertyChanged += OnDataChanged;
+            LoginInfo.PropertyChanged += OnDataChanged;
+            
+            _initialized = true;
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to load projects: {ex.Message}";
+            Logger.Error($"ProjectsPage initialization error: {ex.Message}");
+        }
+    }
+
+    private void OnDataChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        InvokeAsync(StateHasChanged);
     }
 
     public void Dispose()
     {
-        manager.ProjectDB.PropertyChanged -= (_, __) => InvokeAsync(StateHasChanged);
-        LoginInfo.PropertyChanged -= (_, __) => InvokeAsync(StateHasChanged);
+        manager.ProjectDB.PropertyChanged -= OnDataChanged;
+        LoginInfo.PropertyChanged -= OnDataChanged;
     }
 
     private void HandleProjectSelection(Project p)
@@ -103,33 +145,44 @@
         LoginInfo.CurrentProject = p;
     }
 
-    private async Task Delete(Project project)
+    private async Task DeleteAsync(Project project)
     {
-        if(project.ProjectId == 1)
+        if (project.ProjectId == 1 || _isProcessing) return;
+
+        try
         {
-            return;
+            var confirmed = await JS.InvokeAsync<bool>("confirm", "Are you sure you want to delete this project?");
+            if (!confirmed) return;
+
+            var reconfirmed = await JS.InvokeAsync<bool>("confirm", "Are you really sure you want to delete this project?");
+            if (!reconfirmed) return;
+
+            _isProcessing = true;
+            StateHasChanged();
+
+            if (project.ProjectId == LoginInfo.CurrentProject?.ProjectId)
+            {
+                var defaultProject = await manager.ProjectDB.GetByIdAsync(1);
+                LoginInfo.CurrentProject = defaultProject;
+            }
+
+            await manager.ProjectDB.DeleteAsync(project);
+            Logger.Info($"Deleted project: {project.ProjectName}");
         }
-
-        var confirmed = await JS.InvokeAsync<bool>("confirm", "Are you sure you want to delete this project?");
-        if (!confirmed) return;
-
-        var reconfirmed = await JS.InvokeAsync<bool>("confirm", "Are you really sure you want to delete this project?");
-        if (!reconfirmed) return;
-
-
-        if (project.ProjectId == LoginInfo.CurrentProject!.ProjectId)
+        catch (Exception ex)
         {
-            LoginInfo.CurrentProject = (await manager.ProjectDB.GetByIdAsync(1))!;
+            _errorMessage = $"Failed to delete project: {ex.Message}";
+            Logger.Error($"Delete project error: {ex.Message}");
         }
-        await manager.ProjectDB.DeleteAsync(project);
-        StateHasChanged();
+        finally
+        {
+            _isProcessing = false;
+            StateHasChanged();
+        }
     }
 
-    private async void HandleNewProject()
+    private void HandleNewProject()
     {
-        Project NewProject = ProjectDataAccess.GetNew();
-        await manager.ProjectDB.InsertAsync(NewProject);
-        LoginInfo.CurrentProject = NewProject;
-        StateHasChanged();
+        // TODO: Add logic to handle creating a new project
     }
 }

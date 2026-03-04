@@ -33,7 +33,21 @@ builder.Services.AddSingleton<Manager>();
 builder.Services.AddSingleton<SqliteLogger>();
 builder.Services.AddScoped<LoginInformation>();
 
+// Add Blazor Server circuit handler for better error logging
+builder.Services.AddServerSideBlazor()
+    .AddCircuitOptions(options =>
+    {
+        options.DetailedErrors = builder.Environment.IsDevelopment();
+    });
+
 var app = builder.Build();
+
+// Ensure database is initialized at startup
+using (var scope = app.Services.CreateScope())
+{
+    var manager = scope.ServiceProvider.GetRequiredService<Manager>();
+    await manager.EnsureInitializedAsync();
+}
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -46,6 +60,7 @@ else
     // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }
+
 app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
 app.UseHttpsRedirection();
 

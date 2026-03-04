@@ -1,22 +1,24 @@
 ﻿@page "/"
+@using System.ComponentModel
 @inject Manager manager
 @inject LoginInformation LoginInfo
 @inject SqliteLogger Logger
 @rendermode InteractiveServer
+@implements IDisposable
 
 <PageTitle>nexus by iamJohnnySam</PageTitle>
 <section class="hero" id="home">
-        <h1>Welcome to nɛxus</h1>
-    </section>
+    <h1>Welcome to nɛxus</h1>
+</section>
 
 <AuthorizeView>
     <Authorized>
         <section class="projects" id="projects">
-            @if (manager.ProjectDB.AllItems == null)
+            @if (!_initialized)
             {
                 <div class="project-card">
                     <div class="project-title">Loading Projects...</div>
-                    <div class="project-desc">...</div>
+                    <div class="project-desc">Please wait...</div>
                 </div>
             }
             else if (manager.ProjectDB.AllItems.Count == 0)
@@ -37,17 +39,34 @@
     </Authorized>
 </AuthorizeView>
 
-
 @code {
-    protected override void OnInitialized()
+    private bool _initialized = false;
+
+    protected override async Task OnInitializedAsync()
     {
-        Logger.Info("Home Screen Loaded", interaction: "Program startup");
-        manager.ProjectDB.PropertyChanged += (_, __) => InvokeAsync(StateHasChanged);
+        try
+        {
+            Logger.Info("Home Screen Loading", interaction: "Program startup");
+            
+            await manager.EnsureInitializedAsync();
+            manager.ProjectDB.PropertyChanged += OnProjectsChanged;
+            
+            _initialized = true;
+            Logger.Info("Home Screen Loaded", interaction: "Program startup");
+        }
+        catch (Exception ex)
+        {
+            Logger.Error($"Failed to initialize Home page: {ex.Message}");
+        }
+    }
+
+    private void OnProjectsChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        InvokeAsync(StateHasChanged);
     }
 
     public void Dispose()
     {
-        manager.ProjectDB.PropertyChanged -= (_, __) => InvokeAsync(StateHasChanged);
+        manager.ProjectDB.PropertyChanged -= OnProjectsChanged;
     }
-
 }

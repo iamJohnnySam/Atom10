@@ -42,12 +42,7 @@ public class Layout : INotifyPropertyChanged
     {
         string podId = GenerateId.Instance.GetPodId();
 
-        Cassette cassette = new()
-        {
-            PayloadType = payloadType,
-            Capacity = capacity,
-            IsMovableCassette = false
-        };
+        Cassette cassette = new(capacity, payloadType, false);
 
         for (int i = 1; i <= capacity; i++)
         {
@@ -96,25 +91,27 @@ public class Layout : INotifyPropertyChanged
                 id++;
             string stationId = $"{stationStruct.Identifier}{id}";
 
-            Cassette? cassette = (stationStruct.IsInputAndPodDockable || stationStruct.IsOutputAndPodDockable) ? null : new Cassette()
-            {
-                PayloadType = stationStruct.PayloadType,
-                Capacity = stationStruct.Capacity,
-                IsMovableCassette = stationStruct.IsIndexable
-            };
+            Cassette? cassette = (stationStruct.IsInputAndPodDockable || stationStruct.IsOutputAndPodDockable) ? null : new Cassette
+                (
+                capacity: stationStruct.Capacity,
+                payloadType: stationStruct.PayloadType,
+                isMovableCassette: stationStruct.IsIndexable
+                );
 
             Dictionary<string, Access> locations = [];
             for (int j = 0; j < stationStruct.AccessibleLocationsWithoutDoor.Count; j++)
             {
                 locations.Add(stationStruct.AccessibleLocationsWithoutDoor[j], new Access(hasDoor: false, transitionTime: 0, accessiblePayloads: stationStruct.AccessiblePayloadsThroughtGap[j]));
             }
-
-            if (stationStruct.AccessibleLocationsWithDoor.Count != stationStruct.DoorTransitionTimes.Count)
-                throw new ErrorResponse(ErrorCode.MissingArguments, $"There are {stationStruct.AccessibleLocationsWithDoor.Count} in the station and {stationStruct.DoorTransitionTimes.Count} door transition times.");
+            
             for (int j = 0; j < stationStruct.AccessibleLocationsWithDoor.Count; j++)
             {
                 locations.Add(stationStruct.AccessibleLocationsWithDoor[j], new Access(hasDoor: true, transitionTime: stationStruct.DoorTransitionTimes[j], accessiblePayloads: stationStruct.AccessiblePayloadsThroughDoor[j]));
             }
+
+            if (stationStruct.AccessibleLocationsWithDoor.Count != stationStruct.DoorTransitionTimes.Count)
+                throw new ErrorResponse(ErrorCode.MissingArguments, $"There are {stationStruct.AccessibleLocationsWithDoor.Count} in the station and {stationStruct.DoorTransitionTimes.Count} door transition times.");
+            
             if (locations.Count == 0)
                 throw new ErrorResponse(ErrorCode.MissingArguments, "Station must have at least one accessible location.");
 
@@ -126,18 +123,16 @@ public class Layout : INotifyPropertyChanged
                 stationProcesses.Add(Processes[processId].ProcessName, Processes[processId]);
             }
 
-            Station station = new()
-            {
-                StationId = stationId,
-                AutoMode = AutoMode,
-                Cassette = cassette,
-                IsInputAndPodDockable = stationStruct.IsInputAndPodDockable,
-                IsOutputAndPodDockable = stationStruct.IsOutputAndPodDockable,
-                Locations = locations,
-                Processes = stationProcesses,
-                Processable = stationStruct.Processable,
-                HighPriority = stationStruct.HighPriority,
-            };
+            Station station = new(
+                stationId: stationId,
+                autoMode: AutoMode,
+                cassette: cassette,
+                isInputAndPodDockable: stationStruct.IsInputAndPodDockable,
+                isOutputAndPodDockable: stationStruct.IsOutputAndPodDockable,
+                locations: locations,
+                processes: stationProcesses,
+                processable: stationStruct.Processable,
+                highPriority: stationStruct.HighPriority);
             Stations.Add(stationId, station);
         }
     }
@@ -165,15 +160,15 @@ public class Layout : INotifyPropertyChanged
                 endEffectors.Add(j, endEffector);
             }
 
-            Manipulator manipulator = new()
-            {
-                ManipulatorId = manipulatorId,
-                EndEffectors = endEffectors,
-                Locations = manipulatorStruct.Locations,
-                MotionTime = (uint)manipulatorStruct.MotionTime,
-                ExtendTime = (uint)manipulatorStruct.ExtendTime,
-                RetractTime = (uint)manipulatorStruct.RetractTime,
-            };
+            Manipulator manipulator = new
+                (
+                manipulatorId: manipulatorId,
+                endEffectors: endEffectors,
+                locations: manipulatorStruct.Locations,
+                motionTime: (uint)manipulatorStruct.MotionTime,
+                extendTime: (uint)manipulatorStruct.ExtendTime,
+                retractTime: (uint)manipulatorStruct.RetractTime
+                );
             Manipulators.Add(manipulatorId, manipulator);
         }
     }

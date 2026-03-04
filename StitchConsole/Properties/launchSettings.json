@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "StitchConsole": {
+      "commandName": "Project",
+      "commandLineArgs": "C:\\Users\\JohnSamarasinghe\\Downloads\\20240327-back-full die output.tif"
+    }
+  }
+}

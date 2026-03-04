@@ -13,12 +13,12 @@ namespace FlowModels;
 public class Manipulator : INotifyPropertyChanged
 {
     // REQUIRED PARAMS
-    public required string ManipulatorId { get; set; }
-    public required Dictionary<int, EndEffector> EndEffectors { get; set; }
-    public required List<string> Locations { get; set; }
-    public required uint MotionTime { get; set; }
-    public required uint ExtendTime { get; set; }
-    public required uint RetractTime { get; set; }
+    public string ManipulatorId { get; set; }
+    public Dictionary<int, EndEffector> EndEffectors { get; set; }
+    public List<string> Locations { get; set; }
+    public uint MotionTime { get; set; }
+    public uint ExtendTime { get; set; }
+    public uint RetractTime { get; set; }
 
 
     // OTHER PARAMS
@@ -37,8 +37,16 @@ public class Manipulator : INotifyPropertyChanged
     }
 
 
-    public Manipulator()
+    public Manipulator(string manipulatorId, Dictionary<int, EndEffector> endEffectors, List<string> locations, 
+        uint motionTime, uint extendTime, uint retractTime)
     {
+        ManipulatorId = manipulatorId;
+        EndEffectors = endEffectors;
+        Locations = locations;
+        MotionTime = motionTime;
+        ExtendTime = extendTime;
+        RetractTime = retractTime;
+
         if (Locations is null || Locations.Count == 0)
             throw new ErrorResponse(ErrorCode.MissingArguments, $"No Locations for Manipulator {ManipulatorId}");
         currentLocation = Locations[0];

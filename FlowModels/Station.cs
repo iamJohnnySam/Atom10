@@ -7,21 +7,23 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Text;
 using Utilities;
+using System.Linq;
+using System.Threading;
 
 namespace FlowModels;
 
 public class Station : INotifyPropertyChanged
 {
     // REQUIRED PARAMS
-    public required string StationId { get; set; }
-    public required bool AutoMode { get; set; }
-    public required Cassette? Cassette { get; set; }
-    public required Dictionary<string, Access> Locations { get; set; }
-    public required Dictionary<string, Process> Processes { get; set; }
-    public required bool IsInputAndPodDockable { get; set; }
-    public required bool IsOutputAndPodDockable { get; set; }
-    public required bool Processable { get; set; }
-    public required bool HighPriority { get; set; }
+    public string StationId { get; set; }
+    public bool AutoMode { get; set; }
+    public Cassette? Cassette { get; set; }
+    public Dictionary<string, Access> Locations { get; set; }
+    public Dictionary<string, Process> Processes { get; set; }
+    public bool IsInputAndPodDockable { get; set; }
+    public bool IsOutputAndPodDockable { get; set; }
+    public bool Processable { get; set; }
+    public bool HighPriority { get; set; }
 
 
     // OTHER PARAMS
@@ -49,13 +51,15 @@ public class Station : INotifyPropertyChanged
         }
         set
         {
-            if (value == string.Empty)
+            if (string.IsNullOrEmpty(value))
                 podId = null;
-            podId = value; OnPropertyChanged();
+            else
+                podId = value;
+            OnPropertyChanged();
         }
     }
     protected internal bool PodDockable { get; set; }
-    public List<int> PendingReservationIds { get; set; } = [];
+    public List<int> PendingReservationIds { get; set; } = new List<int>();
     private bool IsFullAndReadyToProcess
     {
         get
@@ -102,10 +106,26 @@ public class Station : INotifyPropertyChanged
 
 
 
-    public Station()
+    public Station(string stationId, bool autoMode, Cassette? cassette, Dictionary<string, Access> locations, Dictionary<string, Process> processes, 
+        bool isInputAndPodDockable, bool isOutputAndPodDockable, bool processable, bool highPriority)
     {
+        StationId = stationId;
+        AutoMode = autoMode;
+        Cassette = cassette;
+        Locations = locations;
+        Processes = processes;
+        IsInputAndPodDockable = isInputAndPodDockable;
+        IsOutputAndPodDockable= isOutputAndPodDockable;
         PodDockable = IsInputAndPodDockable || IsOutputAndPodDockable;
-        CurrentLocation = Locations!.Keys.First();
+        Processable = processable;
+        HighPriority = highPriority;
+
+        // Guard required collections to avoid null/empty usage in constructor
+        if (Locations == null || Locations.Count == 0)
+            throw new ErrorResponse(ErrorCode.ProgramError, $"Station {StationId} must have at least one location defined.");
+
+        // pick a deterministic starting location
+        CurrentLocation = Locations.Keys.First();
 
         if (!PodDockable && Cassette == null)
             throw new ErrorResponse(ErrorCode.PodNotAvailable, $"Station {StationId} does not contain expected cassette.");
@@ -113,7 +133,8 @@ public class Station : INotifyPropertyChanged
 
     private void CheckPod()
     {
-        if (Cassette == null || PodId == null)
+        // Avoid using PodId getter which throws; check backing field and PodDockable state
+        if (Cassette == null || (PodDockable && podId == null))
             throw new ErrorResponse(ErrorCode.PodNotAvailable, $"Station {StationId} did not contain Pod");
     }
     protected internal void CheckLocationAccess(string location)
@@ -206,6 +227,9 @@ public class Station : INotifyPropertyChanged
         if (Cassette == null)
             throw new ErrorResponse(ErrorCode.PodNotAvailable, $"Station {StationId} does not contain expected cassette");
 
+        if (!Locations.ContainsKey(accessFromLocation))
+            throw new ErrorResponse(ErrorCode.NotAccessible, $"Location {accessFromLocation} is Out of Bounds");
+
         if (CurrentLocation != accessFromLocation)
             throw new ErrorResponse(ErrorCode.NotAccessible, $"Station {StationId} is not currently at location {accessFromLocation}");
 
@@ -214,9 +238,6 @@ public class Station : INotifyPropertyChanged
 
         if (startingSlot < 0)
             throw new ErrorResponse(ErrorCode.SlotOutOfBounds, $"Starting slot cannot be less than 1. Or you did not pass in a starting slot and all slots are unavailable.");
-
-        if (!Locations.ContainsKey(accessFromLocation))
-            throw new ErrorResponse(ErrorCode.NotAccessible, $"Location {accessFromLocation} is Out of Bounds");
 
         if (Locations[accessFromLocation].AccessiblePayloads < slotCount)
             throw new ErrorResponse(ErrorCode.NotAccessible, $"Location {accessFromLocation} door is not big enough to access {slotCount} payloads.");
@@ -234,6 +255,9 @@ public class Station : INotifyPropertyChanged
         if (Cassette == null)
             throw new ErrorResponse(ErrorCode.PodNotAvailable, $"Station {StationId} does not contain expected cassette");
 
+        if (!Locations.ContainsKey(accessFromLocation))
+            throw new ErrorResponse(ErrorCode.NotAccessible, $"Location {accessFromLocation} is Out of Bounds");
+
         if (CurrentLocation != accessFromLocation)
             throw new ErrorResponse(ErrorCode.NotAccessible, $"Station {StationId} is not currently at location {accessFromLocation}");
 
@@ -242,9 +266,6 @@ public class Station : INotifyPropertyChanged
 
         if (startingSlot < 0)
             throw new ErrorResponse(ErrorCode.SlotOutOfBounds, $"Starting slot cannot be less than 1. Or you did not pass in a starting slot and all slots are unavailable.");
-
-        if (!Locations.ContainsKey(accessFromLocation))
-            throw new ErrorResponse(ErrorCode.NotAccessible, $"Location {accessFromLocation} is Out of Bounds");
 
         if (Locations[accessFromLocation].AccessiblePayloads < slotCount)
             throw new ErrorResponse(ErrorCode.NotAccessible, $"Location {accessFromLocation} door is not big enough to access {slotCount} payloads.");
@@ -332,7 +353,7 @@ public class Station : INotifyPropertyChanged
 
     private void CloseAllDoors(string tID)
     {
-        List<Thread> threads = [];
+        List<Thread> threads = new List<Thread>();
         foreach (var location in Locations)
         {
             if (location.Value.HasDoor && location.Value.DoorStatus != DoorStatus.Closed)
@@ -342,22 +363,22 @@ public class Station : INotifyPropertyChanged
                 threads.Add(t);
             }
         }
-        while (!AllClosableDoorsAreClosed)
-        {
-            Thread.Sleep(1);
-        }
+
+        // Join started door threads with a timeout to avoid infinite busy-wait
+        const int joinTimeoutMs = 5000;
         foreach (Thread thread in threads)
         {
-            if (thread.IsAlive)
-            {
-                thread.Join();
-            }
+            thread.Join(joinTimeoutMs);
         }
+
+        if (!AllClosableDoorsAreClosed)
+            throw new ErrorResponse(ErrorCode.IncorrectState, $"Not all doors could be closed for Station {StationId} within timeout.");
+
         TransactionLogger.Instance.Info(new TransactionLog(tID, $"Station {StationId} All closable doors closed."));
     }
     private void OpenAllDoors(string tID)
     {
-        List<Thread> threads = [];
+        List<Thread> threads = new List<Thread>();
         foreach (var location in Locations)
         {
             if (location.Value.HasDoor && location.Value.DoorStatus != DoorStatus.Open)
@@ -367,33 +388,39 @@ public class Station : INotifyPropertyChanged
                 threads.Add(t);
             }
         }
-        while (!AllDoorsAreOpened)
-        {
-            Thread.Sleep(1);
-        }
+
+        const int joinTimeoutMs = 5000;
         foreach (Thread thread in threads)
         {
-            if (thread.IsAlive)
-            {
-                thread.Join();
-            }
+            thread.Join(joinTimeoutMs);
         }
+
+        if (!AllDoorsAreOpened)
+            throw new ErrorResponse(ErrorCode.IncorrectState, $"Not all doors could be opened for Station {StationId} within timeout.");
+
         TransactionLogger.Instance.Info(new TransactionLog(tID, $"Station {StationId} All openable doors opened."));
     }
     private void MoveCassetteToSlot(string tID, List<Reservation> reservations)
     {
-        int minSlot = 0;
-        int maxSlot = 0;
+        if (reservations == null || reservations.Count == 0)
+            return;
+
+        int minSlot = int.MaxValue;
+        int maxSlot = int.MinValue;
         foreach (Reservation reservation in reservations)
         {
-            if (minSlot == 0 || reservation.SlotId < minSlot)
+            if (reservation.SlotId < minSlot)
                 minSlot = reservation.SlotId;
 
-            if (maxSlot == 0 || reservation.SlotId > maxSlot)
+            if (reservation.SlotId > maxSlot)
                 maxSlot = reservation.SlotId;
         }
 
-        if (Cassette!.CurrentSlot > reservations[0].SlotId || (Cassette!.CurrentSlot + Locations[reservations[0].AccessFromLocation].AccessiblePayloads) < reservations[0].SlotId)
+        string accessFrom = reservations[0].AccessFromLocation;
+        int accessible = Locations[accessFrom].AccessiblePayloads;
+
+        // If cassette window does not include [minSlot..maxSlot], move to minSlot
+        if (Cassette!.CurrentSlot > minSlot || (Cassette!.CurrentSlot + accessible - 1) < maxSlot)
             Cassette!.MoveToSlot(minSlot);
     }
 

@@ -17,7 +17,7 @@ public class ReviewPointDataAccess : DataAccess<ReviewPoint>
         {
             point.Module = ProductModuleDB.GetByIdAsync(point.ModuleId).Result;
         }
-        AllItems = AllItems.OrderBy(rank => rank.Module!.Rank).ThenBy(cat => cat.ReviewCategory).ToList();
+        UpdateAllItems(AllItems.OrderBy(rank => rank.Module!.Rank).ThenBy(cat => cat.ReviewCategory).ToList());
     }
 
     public override async Task GetAllAsync()
@@ -27,7 +27,7 @@ public class ReviewPointDataAccess : DataAccess<ReviewPoint>
         {
             point.Module = await ProductModuleDB.GetByIdAsync(point.ModuleId);
         }
-        AllItems = AllItems.OrderBy(rank => rank.Module!.Rank).ThenBy(cat => cat.ReviewCategory).ToList();
+        UpdateAllItems(AllItems.OrderBy(rank => rank.Module!.Rank).ThenBy(cat => cat.ReviewCategory).ToList());
     }
     public async Task<List<ReviewPoint>> GetByProductModuleIdAsync(int ProductModuleId)
     {
