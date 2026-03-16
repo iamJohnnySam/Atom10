@@ -93,7 +93,8 @@ public class Manager
 
 		tm.DeleteTorrentsIfDone();
 		mediaHandler.Relocate();
-		UpdateLibraryWithTorrents(tm.GetTorrents());
+		UpdateLibrary();
+		//UpdateLibraryWithTorrents(tm.GetTorrents());
 	}
 
 	void UpdateLibrary()
@@ -104,13 +105,13 @@ public class Manager
 
 		libraryUpdater.UpdateLibrary();
 	}
-	void UpdateLibraryWithTorrents(List<TorrentInfo> torrents)
-	{
-		TvShowDataAccess tvShowDataAccess = new(_connectionString);
-		MovieDataAccess movieDataAccess = new(_connectionString);
-		Librarian libraryUpdater = new(movieDataAccess, tvShowDataAccess, _config.GetField("MEDIA_MOVIES"), _config.GetField("MEDIA_SHOWS"));
+	//void UpdateLibraryWithTorrents(List<TorrentInfo> torrents)
+	//{
+	//	TvShowDataAccess tvShowDataAccess = new(_connectionString);
+	//	MovieDataAccess movieDataAccess = new(_connectionString);
+	//	Librarian libraryUpdater = new(movieDataAccess, tvShowDataAccess, _config.GetField("MEDIA_MOVIES"), _config.GetField("MEDIA_SHOWS"));
 
-		libraryUpdater.UpdateLibrary();
-		libraryUpdater.UpdateTorrents(torrents);
-	}
+	//	libraryUpdater.UpdateLibrary();
+	//	libraryUpdater.UpdateTorrents(torrents);
+	//}
 }
