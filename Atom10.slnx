@@ -5,6 +5,7 @@
   <Project Path="FlowDatabaseManager/FlowDatabaseManager.csproj" Id="79ce689f-b705-4603-8590-a38211829b5c" />
   <Project Path="FlowModels/FlowModels.csproj" />
   <Project Path="Logger/Logger.csproj" Id="9e45c60b-5862-48b2-9276-b0ca76297639" />
+  <Project Path="MediaBoxConsole/MediaBoxConsole.csproj" Id="fd0385f6-a3c1-4bab-ba46-88a42abdb0bb" />
   <Project Path="MediaBoxDatabaseModels/MediaBoxDatabaseModels.csproj" Id="3df23f9c-8496-4b16-bd82-669c13ea2f61" />
   <Project Path="MediaBoxManager/MediaBoxManager.csproj" Id="f79ece8b-bcd5-4461-a6e1-7a8d222c7681" />
   <Project Path="MediaBoxWebApp/MediaBoxWebApp.csproj" Id="c6195664-cb1c-4924-8b62-64dc6bf09533" />

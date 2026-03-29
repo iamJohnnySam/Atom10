@@ -3,6 +3,7 @@ using Logger;
 using MediaBoxDatabaseModels;
 using Utilities;
 using Transmission.API.RPC.Entity;
+using MediaBoxManager.Enum;
 
 namespace MediaBoxManager;
 
@@ -13,20 +14,37 @@ public class Manager
 	private readonly AtomConfiguration _config;
 	private readonly SqliteLogger logger;
 
-	public Manager()
+	public Manager(bool setSchedule = true, RunProgram runType = RunProgram.None, string? youtubeUrl = null)
 	{
 		_connectionString = new SqliteConnectionString("MediBoxDB").ConnectionString;
 		_config = new(typeof(Manager));
 		_scheduler = new ();
 
-		SetBasicSchedule();
-		
+		if (setSchedule)
+		{
+			SetBasicSchedule();
+		}
+
 		logger = new SqliteLogger();
 		logger.Debug($"Manager Created");
 
-		CleanTorrents();
-		logger.Debug($"Cleaning Completed...");
-		ScanNewShows();
+		if (runType == RunProgram.TorrentCleaner || setSchedule)
+		{
+			CleanTorrents();
+			logger.Debug($"Cleaning Completed...");
+		}
+
+		if (runType == RunProgram.ShowScanner || setSchedule)
+		{
+			ScanNewShows();
+			logger.Debug($"Show Scan Completed...");
+		}
+
+		if (runType == RunProgram.YouTubeDownloader)
+		{
+			DownloadYouTube(youtubeUrl);
+			logger.Debug($"YouTube Downloads Completed...");
+		}
 	}
 
 	void SetBasicSchedule()
@@ -104,6 +122,26 @@ public class Manager
 		Librarian libraryUpdater = new(movieDataAccess, tvShowDataAccess, _config.GetField("MEDIA_MOVIES"), _config.GetField("MEDIA_SHOWS"));
 
 		libraryUpdater.UpdateLibrary();
+	}
+
+	void DownloadYouTube(string? url = null)
+	{
+		YouTubeDownloader downloader = new(
+			_config.GetField("YTDLP_OUTPUT_PATH"),
+			_config.GetField("YTDLP_ARCHIVE_PATH"),
+			_config.GetField("YTDLP_NODE_RUNTIME")
+		);
+
+		List<YtDlpDownloadJob> jobs = url is not null
+			? [new() { Url = url }]
+			:
+			[
+				new() { Url = "https://www.youtube.com/@NewsFirstSrilanka/streams", PlaylistEnd = 20, MatchTitle = "Prime Time Sinhala News - 7 PM", DateAfter = "today-3days" }
+
+				// Add more jobs here
+			];
+
+		downloader.RunAll(jobs);
 	}
 	//void UpdateLibraryWithTorrents(List<TorrentInfo> torrents)
 	//{
